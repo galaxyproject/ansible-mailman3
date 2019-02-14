@@ -1,0 +1,35 @@
+---
+
+- name: Ensure supported OS for package installs
+  assert:
+    that:
+      - "ansible_os_family == 'Debian'"
+    success_msg: "OS is supported for Mailman 3 installation by package"
+    fail_msg: "OS is not supported for Mailman 3 installation by package, set `mailman3_install_method` to `pip`"
+
+# TODO: everything below untested with Mailman 3
+- name: Install debconf packages
+  apt:
+    name:
+      - debconf
+      - debconf-utils
+  when: ansible_os_family == "Debian"
+
+- name: Set client options in debconf
+  debconf:
+    name: mailman3
+    question: "{{ item.question }}"
+    value: "{{ item.value }}"
+    vtype: "{{ item.vtype }}"
+  when: ansible_os_family == "Debian"
+  with_items:
+      - question: "mailman/site_languages"
+        value: "{{ mailman3_language }}"
+        type: "multiselect"
+      - question: "mailman/default_server_language"
+        value: "{{ mailman3_language }}"
+        vtype: "multiselect"
+
+- name: Install Mailman and dependency packages
+  package:
+    name: "{{ mailman3_packages }}"

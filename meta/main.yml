@@ -1,0 +1,28 @@
+galaxy_info:
+  author: natefoo
+  description: Mailman 3 installation, configuration, and management for Linux
+  company: The Galaxy Project
+  license: license (MIT)
+  min_ansible_version: 2.7
+  platforms:
+    - name: EL
+      versions:
+        - 7
+    - name: Debian
+      versions:
+        - stretch
+        - buster
+        - sid
+    - name: Ubuntu
+      versions:
+        - xenial
+        - bionic
+  galaxy_tags:
+    - mail
+    - mailing
+    - list
+    - lists
+    - mailman
+    - mailman3
+
+dependencies: []

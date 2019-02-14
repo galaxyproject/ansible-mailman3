@@ -1,0 +1,11 @@
+---
+
+- name: Include installation tasks
+  import_tasks: "install_{{ mailman3_install_method }}.yml"
+
+- name: Include user creation tasks
+  include_tasks: user.yml
+  when: mailman3_create_user
+
+- name: Include configuration tasks
+  import_tasks: "config.yml"

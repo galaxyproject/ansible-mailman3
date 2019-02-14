@@ -1,0 +1,109 @@
+---
+
+mailman3_install_method: pip
+mailman3_language: en
+mailman3_install_system_dependencies: "{{ __mailman3_debian or __mailman3_redhat }}"
+mailman3_python_uwsgi_package: pyuwsgi
+mailman3_backup_configs: false
+
+# For pip installs, the role creates a venv at this path
+mailman3_install_dir: /opt/mailman3
+
+# You should rarely need to set these
+#mailman3_virtualenv_python: python3
+#mailman3_virtualenv_command: python3 -m venv   # https://github.com/ansible/ansible/issues/52275
+mailman3_virtualenv_command: pyvenv
+
+__mailman3_debian: "{{ ansible_os_family == 'Debian' }}"
+__mailman3_redhat: "{{ ansible_os_family == 'RedHat' }}"
+__mailman3_pip: "{{ mailman3_install_method == 'pip' }}"
+
+# pip needed packages if using the pip install method, system packages if using the package method
+__mailman3_pip_packages:
+  - whoosh
+  - django>=1.11
+  - mailman
+  - postorius
+  - hyperkitty
+  - mailman-hyperkitty
+  - "{{ mailman3_python_uwsgi_package }}"
+__mailman3_debian_packages:
+  - mailman3-full
+__mailman3_redhat_packages: null  # currently nonexistent
+mailman3_packages: >-
+    {{
+        __mailman3_pip_packages if __mailman3_pip else (
+        __mailman3_debian_packages if __mailman3_debian else
+        __mailman3_redhat_packages)
+    }}
+
+# Dependant system packages needed if using the pip install method
+__mailman3_debian_system_dependency_packages:
+  - python3             # requires Ubuntu >= 16.04, Debian >= stretch (for 3.5)
+  - python3-setuptools  # Ansible pip module needs this despite having venv; UPDATE: no it doesn't if it can find python3; UPDATE2: well now it does again, wtf
+  - python3-venv
+  - sassc
+  - uwsgi
+  - uwsgi-plugin-python3
+__mailman3_redhat_system_dependency_packages:
+  # all require EPEL
+  - python36    # requires EL7+
+  - sassc
+  - uwsgi
+  - uwsgi-plugin-python36
+# TODO: as of `date`, compilers + python headers are required for these packages that don't have published cext wheels:
+#   - rcssmin
+#   - rjsmin
+# But this role will not install compilers in case wheels become available at a later date
+mailman3_system_dependency_packages: >-
+    {{
+        __mailman3_debian_system_dependency_packages if __mailman3_debian else
+        __mailman3_redhat_system_dependency_packages
+    }}
+
+mailman3_etc_dir: >-
+    {{
+        '/etc/opt/mailman3' if __mailman3_pip else (
+        '/etc/mailman3' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_var_dir: >-
+    {{
+        '/var/opt/mailman3' if __mailman3_pip else (
+        '/var/lib/mailman3' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_log_dir: >-
+    {{
+        '/var/opt/mailman3/log' if __mailman3_pip else (
+        '/var/log/mailman3' if __mailman3_debian else
+        None)
+    }}
+
+__mailman3_config_default:
+    mailman:
+        layout: custom
+    paths.custom:
+        var_dir: "{{ mailman3_var_dir }}"
+        bin_dir: "$argv"
+        log_dir: "{{ mailman3_log_dir }}"
+        lock_dir: "{{ mailman3_var_dir }}/locks"
+        data_dir: "{{ mailman3_var_dir }}/data"
+        cache_dir: "{{ mailman3_var_dir }}/cache"
+        etc_dir: "{{ mailman3_etc_dir }}"
+        messages_dir: "{{ mailman3_var_dir }}/messages"
+        archives_dir: "{{ mailman3_var_dir }}/archives"
+        template_dir: "{{ mailman3_var_dir }}/templates"
+        pid_file: "{{ mailman3_var_dir }}/master.pid"
+        lock_file: "{{ mailman3_var_dir }}/master.lck"
+__mailman3_config_merged: "{{ __mailman3_config_default | combine(mailman3_config | default({}), recursive=True) }}"
+
+# TODO: check what these are in Debian
+#mailman3_user: mailman
+mailman3_create_user: "{{ __mailman3_pip }}"
+
+__mailman3_user_name: "{{ (mailman3_user | default({})).name | default('mailman') }}"
+# TODO: this could be incorrect, use the group collection from galaxyproject.galaxy
+__mailman3_group_name: "{{ (mailman3_user | default({})).group | default(omit) }}"

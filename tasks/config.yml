@@ -1,0 +1,44 @@
+---
+
+- name: Get Mailman user group ID
+  getent:
+    database: passwd
+    key: "{{ __mailman3_user_name }}"
+
+- name: Get Mailman user group name
+  getent:
+    database: group
+    key: "{{ getent_passwd[__mailman3_user_name][2] }}"
+
+- name: Set Mailman user group fact
+  set_fact:
+    __mailman3_group_name: "{{ getent_group | first }}"
+
+- name: Create configuration, data, and state directories
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner | default(omit) }}"
+    group: "{{ item.group | default(omit) }}"
+    mode: "{{ item.mode | default(omit) }}"
+    state: directory
+  with_items:
+    - path: "{{ mailman3_etc_dir }}"
+      group: "{{ __mailman3_group_name }}"
+      mode: "0750"
+    - path: "{{ mailman3_var_dir }}"
+      owner: "{{ __mailman3_user_name }}"
+      group: "{{ __mailman3_group_name }}"
+      mode: "0750"
+    - path: "{{ mailman3_log_dir }}"
+      owner: "{{ __mailman3_user_name }}"
+      group: "{{ __mailman3_group_name }}"
+      mode: "0750"
+  when: __mailman3_pip
+
+- name: Create/update mailman.cfg
+  template:
+    src: mailman.cfg.j2
+    dest: "{{ mailman3_etc_dir }}/mailman.cfg"
+    group: "{{ __mailman3_group_name }}"
+    mode: "0640"
+    backup: "{{ mailman3_backup_configs }}"

@@ -1,0 +1,11 @@
+;;
+;;
+;;
+
+{% for section in __mailman3_config_merged | sort %}
+[{{ section }}]
+{% for key in __mailman3_config_merged[section] | sort %}
+{{ key }}: {{ __mailman3_config_merged[section][key] }}
+{% endfor %}
+
+{% endfor %}

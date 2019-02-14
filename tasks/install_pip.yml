@@ -1,0 +1,20 @@
+---
+
+- name: Install system dependencies
+  package:
+    name: "{{ mailman3_system_dependency_packages }}"
+  when: mailman3_install_system_dependencies
+
+# This is a separate task from the next one because `python3 -m venv` doesn't install wheel and pip needs it to build
+# wheels (not strictly required, but preferred) and won't load it mid-invocation if installed during the next task
+- name: Create Mailman venv
+  pip:
+    name: wheel
+    virtualenv: "{{ mailman3_install_dir }}"
+    virtualenv_python: "{{ mailman3_virtualenv_python | default(omit) }}"
+    virtualenv_command: "{{ mailman3_virtualenv_command | default(omit) }}"
+
+- name: Install Mailman and Python dependencies
+  pip:
+    name: "{{ mailman3_packages }}"
+    virtualenv: "{{ mailman3_install_dir }}"

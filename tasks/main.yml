@@ -1,11 +1,25 @@
 ---
 
-- name: Include installation tasks
-  import_tasks: "install_{{ mailman3_install_method }}.yml"
-
 - name: Include user creation tasks
   include_tasks: user.yml
   when: mailman3_create_user
 
+- name: Include installation tasks
+  import_tasks: "install_{{ mailman3_install_method }}.yml"
+
 - name: Include configuration tasks
   import_tasks: "config.yml"
+
+# Perform whatever restarts are needed now, prevents double restart on first run
+- name: Flush handlers
+  meta: flush_handlers
+
+- name: Ensure services are enabled and running
+  service:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  with_items:
+    - "{{ mailman3_core_service_name }}"
+    - "{{ mailman3_web_service_name }}"
+  when: mailman3_process_manager != "supervisor"

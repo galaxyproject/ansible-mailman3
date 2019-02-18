@@ -12,6 +12,13 @@ mailman3_backup_configs: false
 # For pip installs, the role creates a venv at this path
 mailman3_install_dir: /opt/mailman3
 
+# uWSGI/proxy communication socket (value only used for pip installs, Debian uses a hardcoded default)
+mailman3_uwsgi_socket: "{{ mailman3_django_var_dir }}/run/uwsgi.sock"
+
+# Optionally serve directly with uWSGI
+#mailman3_http_socket:
+mailman3_uwsgi_static: no
+
 # You should rarely need to set these
 #mailman3_virtualenv_python: python3
 #mailman3_virtualenv_command: python3 -m venv   # https://github.com/ansible/ansible/issues/52275
@@ -30,8 +37,6 @@ __mailman3_pip_packages:
   - hyperkitty
   - mailman-hyperkitty
   - "{{ mailman3_python_uwsgi_package }}"
-  # TODO: this should be dependent on the DB config
-  - psycopg2-binary
 __mailman3_debian_packages:
   - mailman3-full
 __mailman3_redhat_packages: null  # currently nonexistent
@@ -66,6 +71,26 @@ mailman3_system_dependency_packages: >-
         __mailman3_redhat_system_dependency_packages
     }}
 
+# TODO: supervisor
+mailman3_process_manager: >-
+    {{
+        'systemd' if ansible_virtualization_type != 'docker' else None
+    }}
+
+mailman3_core_service_name: >-
+    {{
+        'mailman3-core' if __mailman3_pip else (
+        'mailman3' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_web_service_name: >-
+    {{
+        'mailman3-web' if __mailman3_pip else (
+        'mailman3-web' if __mailman3_debian else
+        None)
+    }}
+
 mailman3_etc_dir: >-
     {{
         '/etc/opt/mailman3' if __mailman3_pip else (
@@ -82,14 +107,21 @@ mailman3_var_dir: >-
 
 mailman3_log_dir: >-
     {{
-        '/var/opt/mailman3/log' if __mailman3_pip else (
+        '/var/opt/mailman3/core/log' if __mailman3_pip else (
         '/var/log/mailman3' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_django_var_dir: >-
+    {{
+        '/var/opt/mailman3/web' if __mailman3_pip else (
+        '/var/lib/mailman3' if __mailman3_debian else
         None)
     }}
 
 mailman3_django_project_dir: >-
     {{
-        '/var/opt/mailman3/web' if __mailman3_pip else (
+        '/var/opt/mailman3/web/project' if __mailman3_pip else (
         '/usr/share/mailman3-web' if __mailman3_debian else
         None)
     }}
@@ -101,10 +133,32 @@ mailman3_django_static_dir: >-
         None)
     }}
 
+mailman3_django_log_dir: >-
+    {{
+        '/var/opt/mailman3/web/log' if __mailman3_pip else (
+        '/var/log/mailman3/web' if __mailman3_debian else
+        None)
+    }}
+
 mailman3_django_settings_file: >-
     {{
         '/etc/opt/mailman3/django-settings.py' if __mailman3_pip else (
         '/etc/mailman3/mailman-web.py' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_web_user: >-
+    {{
+        'www-data' if __mailman3_debian else (
+        None)
+    }}
+# TODO:
+#'httpd' if __mailman3_redhat and apache
+#'nginx' if __mailman3_redhat and nginx
+
+mailman3_web_group: >-
+    {{
+        'www-data' if __mailman3_debian else (
         None)
     }}
 
@@ -141,15 +195,15 @@ __mailman3_config_merged: "{{ __mailman3_config_default | combine(mailman3_confi
 __mailman3_django_config_default:
   admins: []
   allowed_hosts: []
-  rest_api_url: "{{ 'https' if __mailman3_config_merged.webservice.use_https else 'http' }}://{{ mailman3_core_api_hostname }}:{{ mailman3_core_api_port }}"
+  rest_api_url: "http://{{ mailman3_core_api_hostname }}:{{ mailman3_core_api_port }}"
   rest_api_user: "{{ mailman3_core_api_admin_user }}"
   rest_api_pass: "{{ mailman3_core_api_admin_pass }}"
   databases:
     default:
-      ENGINE: django.db.backends.postgresql_psycopg2
-      NAME: mailman3web
-      USER: mailmansuite
-      PASSWORD: mmpass
+      ENGINE: django.db.backends.sqlite3
+      NAME: "{{ mailman3_django_var_dir }}/db/mailmansuite.db"
+      USER: ''
+      PASSWORD: ''
       HOST: ''
       PORT: ''
   use_x_forwarded_host: true
@@ -161,8 +215,13 @@ __mailman3_django_config_default:
   socialaccount_providers: {}
 __mailman3_django_config_merged: "{{ __mailman3_django_config_default | combine(mailman3_django_config | default({}), recursive=True) }}"
 
-# TODO: check what these are in Debian
 #mailman3_user: mailman
-mailman3_create_user: "{{ __mailman3_pip }}"
+mailman3_create_user: "{{ __mailman3_pip and not __mailman3_debian }}"
 
-__mailman3_user_name: "{{ (mailman3_user | default({})).name | default('mailman') }}"
+__mailman3_debian_user_name: list
+__mailman3_user_name: >-
+    {{
+        (mailman3_user | default({})).name | default(
+        __mailman3_debian_user_name if __mailman3_debian else
+        'mailman')
+    }}

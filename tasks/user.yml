@@ -9,11 +9,12 @@
 
 - name: Create mailman3 user
   user:
-    name: "{{ (mailman3_user | default({})).name | default('mailman') }}"
+    name: "{{ __mailman_user_name }}"
     comment: "{{ (mailman3_user | default({})).comment | default(omit) }}"
     uid: "{{ (mailman3_user | default({})).uid | default(omit) }}"
     group: "{{ (mailman3_user | default({})).group | default(omit) }}"
     groups: "{{ (mailman3_user | default({})).groups | default(omit) }}"
     home: "{{ (mailman3_user | default({})).home | default(mailman3_var_dir) }}"
+    create_home: "{{ (mailman3_user | default({})).create_home | default('no') }}"
     shell: "{{ (mailman3_user | default({})).shell | default(omit) }}"
     system: "{{ (mailman3_user | default({})).system | default('yes') }}"

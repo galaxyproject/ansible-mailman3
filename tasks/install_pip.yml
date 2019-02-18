@@ -18,3 +18,73 @@
   pip:
     name: "{{ mailman3_packages }}"
     virtualenv: "{{ mailman3_install_dir }}"
+
+- name: Get Mailman user group ID
+  getent:
+    database: passwd
+    key: "{{ __mailman3_user_name }}"
+
+- name: Get Mailman user group name
+  getent:
+    database: group
+    key: "{{ getent_passwd[__mailman3_user_name][2] }}"
+
+- name: Set Mailman user group fact
+  set_fact:
+    __mailman3_group_name: "{{ getent_group | first }}"
+
+- name: Create configuration, data, and state directories
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner | default(omit) }}"
+    group: "{{ item.group | default(omit) }}"
+    mode: "{{ item.mode | default(omit) }}"
+    state: directory
+  with_items:
+    - path: "{{ mailman3_etc_dir }}"
+      group: "{{ __mailman3_group_name }}"
+      mode: "0750"
+    # Creates the parent /var/opt/mailman3 with default permissions
+    - path: "{{ mailman3_var_dir | dirname }}"
+    - path: "{{ mailman3_var_dir }}"
+      owner: "{{ __mailman3_user_name }}"
+      group: "{{ __mailman3_group_name }}"
+      mode: "0750"
+    - path: "{{ mailman3_log_dir }}"
+      owner: "{{ __mailman3_user_name }}"
+      group: "{{ __mailman3_group_name }}"
+      mode: "0750"
+    - path: "{{ mailman3_django_var_dir }}"
+    - path: "{{ mailman3_django_var_dir }}/run"
+      owner: "{{ mailman3_web_user }}"
+      group: "{{ mailman3_web_group }}"
+      mode: "0750"
+    - path: "{{ mailman3_django_var_dir }}/db"
+      owner: "{{ mailman3_web_user }}"
+      group: "{{ mailman3_web_group }}"
+      mode: "0750"
+    - path: "{{ mailman3_django_project_dir }}"
+      group: "{{ mailman3_web_group }}"
+      mode: "0750"
+    - path: "{{ mailman3_django_log_dir }}"
+      mode: "0750"
+      owner: "{{ mailman3_web_user }}"
+      group: "{{ mailman3_web_group }}"
+
+# TODO: This is needed to read settings_local.py from /etc/opt/mailman3, but will it be needed for anything else?
+# TODO: config option to control this?
+- name: Add web user to Mailman user group
+  user:
+    name: "{{ mailman3_web_user }}"
+    groups: "{{ __mailman3_group_name }}"
+
+- name: Install systemd service unit files
+  template:
+    src: "{{ item }}.j2"
+    dest: /etc/systemd/system/{{ item }}
+  with_items:
+    - mailman3-core.service
+    - mailman3-web.service
+  when: mailman3_process_manager == 'systemd'
+  notify:
+    - reload systemd manager configuration

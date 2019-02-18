@@ -1,7 +1,10 @@
 ---
 
+# TODO: make sure you point out to set django secret_key, django admins, django archive key?
+
 mailman3_install_method: pip
 mailman3_language: en
+mailman3_language_code: en-us
 mailman3_install_system_dependencies: "{{ __mailman3_debian or __mailman3_redhat }}"
 mailman3_python_uwsgi_package: pyuwsgi
 mailman3_backup_configs: false
@@ -27,6 +30,8 @@ __mailman3_pip_packages:
   - hyperkitty
   - mailman-hyperkitty
   - "{{ mailman3_python_uwsgi_package }}"
+  # TODO: this should be dependent on the DB config
+  - psycopg2-binary
 __mailman3_debian_packages:
   - mailman3-full
 __mailman3_redhat_packages: null  # currently nonexistent
@@ -70,7 +75,7 @@ mailman3_etc_dir: >-
 
 mailman3_var_dir: >-
     {{
-        '/var/opt/mailman3' if __mailman3_pip else (
+        '/var/opt/mailman3/core' if __mailman3_pip else (
         '/var/lib/mailman3' if __mailman3_debian else
         None)
     }}
@@ -82,28 +87,82 @@ mailman3_log_dir: >-
         None)
     }}
 
+mailman3_django_project_dir: >-
+    {{
+        '/var/opt/mailman3/web' if __mailman3_pip else (
+        '/usr/share/mailman3-web' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_django_static_dir: >-
+    {{
+        '/var/opt/mailman3/web/static' if __mailman3_pip else (
+        '/var/lib/mailman3/web/static' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_django_settings_file: >-
+    {{
+        '/etc/opt/mailman3/django-settings.py' if __mailman3_pip else (
+        '/etc/mailman3/mailman-web.py' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_core_api_hostname: localhost
+mailman3_core_api_port: 8001
+mailman3_core_api_admin_user: restadmin
+mailman3_core_api_admin_pass: restpass
+
 __mailman3_config_default:
-    mailman:
-        layout: custom
-    paths.custom:
-        var_dir: "{{ mailman3_var_dir }}"
-        bin_dir: "$argv"
-        log_dir: "{{ mailman3_log_dir }}"
-        lock_dir: "{{ mailman3_var_dir }}/locks"
-        data_dir: "{{ mailman3_var_dir }}/data"
-        cache_dir: "{{ mailman3_var_dir }}/cache"
-        etc_dir: "{{ mailman3_etc_dir }}"
-        messages_dir: "{{ mailman3_var_dir }}/messages"
-        archives_dir: "{{ mailman3_var_dir }}/archives"
-        template_dir: "{{ mailman3_var_dir }}/templates"
-        pid_file: "{{ mailman3_var_dir }}/master.pid"
-        lock_file: "{{ mailman3_var_dir }}/master.lck"
+  mailman:
+    layout: custom
+  paths.custom:
+    var_dir: "{{ mailman3_var_dir }}"
+    bin_dir: "$argv"
+    log_dir: "{{ mailman3_log_dir }}"
+    lock_dir: "{{ mailman3_var_dir }}/locks"
+    data_dir: "{{ mailman3_var_dir }}/data"
+    cache_dir: "{{ mailman3_var_dir }}/cache"
+    etc_dir: "{{ mailman3_etc_dir }}"
+    messages_dir: "{{ mailman3_var_dir }}/messages"
+    archives_dir: "{{ mailman3_var_dir }}/archives"
+    template_dir: "{{ mailman3_var_dir }}/templates"
+    pid_file: "{{ mailman3_var_dir }}/master.pid"
+    lock_file: "{{ mailman3_var_dir }}/master.lck"
+  webservice:
+    hostname: "{{ mailman3_core_api_hostname }}"
+    port: "{{ mailman3_core_api_port }}"
+    use_https: "no"
+    admin_user: "{{ mailman3_core_api_admin_user }}"
+    admin_pass: "{{ mailman3_core_api_admin_pass }}"
+    api_version: "3.1"
 __mailman3_config_merged: "{{ __mailman3_config_default | combine(mailman3_config | default({}), recursive=True) }}"
+
+__mailman3_django_config_default:
+  admins: []
+  allowed_hosts: []
+  rest_api_url: "{{ 'https' if __mailman3_config_merged.webservice.use_https else 'http' }}://{{ mailman3_core_api_hostname }}:{{ mailman3_core_api_port }}"
+  rest_api_user: "{{ mailman3_core_api_admin_user }}"
+  rest_api_pass: "{{ mailman3_core_api_admin_pass }}"
+  databases:
+    default:
+      ENGINE: django.db.backends.postgresql_psycopg2
+      NAME: mailman3web
+      USER: mailmansuite
+      PASSWORD: mmpass
+      HOST: ''
+      PORT: ''
+  use_x_forwarded_host: true
+  secure_proxy_ssl_header: HTTP_X_FORWARDED_PROTO
+  default_http_protocol: https
+  default_from_email: postorius@localhost.local
+  server_email: root@localhost.local
+  compress_offline: true
+  socialaccount_providers: {}
+__mailman3_django_config_merged: "{{ __mailman3_django_config_default | combine(mailman3_django_config | default({}), recursive=True) }}"
 
 # TODO: check what these are in Debian
 #mailman3_user: mailman
 mailman3_create_user: "{{ __mailman3_pip }}"
 
 __mailman3_user_name: "{{ (mailman3_user | default({})).name | default('mailman') }}"
-# TODO: this could be incorrect, use the group collection from galaxyproject.galaxy
-__mailman3_group_name: "{{ (mailman3_user | default({})).group | default(omit) }}"

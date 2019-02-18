@@ -33,6 +33,9 @@
       owner: "{{ __mailman3_user_name }}"
       group: "{{ __mailman3_group_name }}"
       mode: "0750"
+    - path: "{{ mailman3_django_project_dir }}"
+      group: "{{ __mailman3_group_name }}"
+      mode: "0750"
   when: __mailman3_pip
 
 - name: Create/update mailman.cfg
@@ -42,3 +45,42 @@
     group: "{{ __mailman3_group_name }}"
     mode: "0640"
     backup: "{{ mailman3_backup_configs }}"
+
+- name: Create/update Django project
+  template:
+    src: "{{ item.name }}.j2"
+    mode: "{{ item.mode }}"
+    dest: "{{ mailman3_django_project_dir }}/{{ item.name }}"
+    backup: "{{ mailman3_backup_configs }}"
+  with_items:
+    - name: manage.py
+      mode: "0755"
+    - name: settings.py
+      mode: "0644"
+    - name: urls.py
+      mode: "0644"
+    - name: wsgi.py
+      mode: "0644"
+  when: __mailman3_pip
+
+- name: Create/update Django settings_local.py
+  template:
+    src: "settings_local.py.j2"
+    dest: "{{ mailman3_django_settings_file }}"
+    group: "{{ __mailman3_group_name }}"
+    mode: "0640"
+    backup: "{{ mailman3_backup_configs }}"
+
+- name: Create Django settings_local.py symlink
+  file:
+    src: "{{ mailman3_django_settings_file }}"
+    dest: "{{ mailman3_django_project_dir }}/settings_local.py"
+    state: link
+  when: __mailman3_pip
+
+- name: Collect Django static files
+  django_manage:
+    app_path: "{{ mailman3_django_project_dir }}"
+    command: collectstatic
+    virtualenv: "{{ mailman3_install_dir }}"
+  when: __mailman3_pip

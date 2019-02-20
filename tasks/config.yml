@@ -49,23 +49,65 @@
 # This runs before collectstatic because it creates the log file, which must be created as the web user
 - name: Create/update Django DB schema
   django_manage:
-    app_path: "{{ mailman3_django_project_dir }}"
     command: migrate
+    app_path: "{{ mailman3_django_project_dir }}"
     virtualenv: "{{ mailman3_install_dir }}"
   # FIXME:
   become: yes
   become_user: "{{ mailman3_web_user }}"
-  become_method: su
-  become_flags: '-s /bin/sh'
+  #become_method: su
+  #become_flags: '-s /bin/sh'
   notify:
     - restart mailman3-web service
 
 - name: Collect Django static files
   django_manage:
-    app_path: "{{ mailman3_django_project_dir }}"
     command: collectstatic
+    app_path: "{{ mailman3_django_project_dir }}"
     virtualenv: "{{ mailman3_install_dir }}"
   when: __mailman3_pip
+
+- name: Check Django superusers
+  django_manage:
+    command: >-
+      shell -c 'import sys;
+      from django.contrib.auth.models import User;
+      sys.stdout.write("exists") if User.objects.filter(username="{{ item.name }}").count() > 0 else sys.stdout.write("create")'
+    #  sys.exit(0 if User.objects.filter(username="{{ item.name }}").count() > 0 else 1)'
+    app_path: "{{ mailman3_django_project_dir }}"
+    virtualenv: "{{ mailman3_install_dir }}"
+  with_items: "{{ mailman3_django_superusers }}"
+  register: __mailman3_checksuperuser_result
+  #check_mode: true
+  #ignore_errors: true
+  #failed_when: false
+  #changed_when: item.rc != 0
+  #changed_when: item is failed
+  changed_when: __mailman3_checksuperuser_result.out == "create"
+  loop_control:
+    label: "{{ item.name }}"
+  # FIXME:
+  become: yes
+  become_user: "{{ mailman3_web_user }}"
+
+- name: Create Django superusers
+  django_manage:
+    command: >-
+      shell -c 'import sys;
+      from django.contrib.auth.models import User;
+      User.objects.create_superuser("{{ item.item.name }}", "{{ item.item.email }}", "{{ item.item.pass }}")'
+    #command: "createsuperuser --noinput --username={{ item.item.name }} --email={{ item.item.email }}"
+    app_path: "{{ mailman3_django_project_dir }}"
+    virtualenv: "{{ mailman3_install_dir }}"
+  when: item is changed
+  with_items: "{{ __mailman3_checksuperuser_result.results }}"
+  register: __mailman3_createsuperuser_result
+  changed_when: true
+  loop_control:
+    label: "{{ item.item.name }}"
+  # FIXME:
+  become: yes
+  become_user: "{{ mailman3_web_user }}"
 
 - name: Create/update uWSGI configuration file
   template:

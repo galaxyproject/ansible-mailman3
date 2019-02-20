@@ -1,0 +1,17 @@
+---
+
+- name: reload systemd manager configuration
+  systemd:
+    daemon_reload: yes
+
+- name: restart mailman3-core service
+  service:
+    name: "{{ mailman3_core_service_name }}"
+    state: restarted
+  when: ansible_virtualization_type != "docker"
+
+- name: restart mailman3-web service
+  service:
+    name: "{{ mailman3_web_service_name }}"
+    state: restarted
+  when: ansible_virtualization_type != "docker"

@@ -8,6 +8,8 @@ mailman3_language_code: en-us
 mailman3_install_system_dependencies: "{{ __mailman3_debian or __mailman3_redhat }}"
 mailman3_python_uwsgi_package: pyuwsgi
 mailman3_backup_configs: false
+# list of dicts with keys `name`, `email`, `pass`
+mailman3_django_superusers: []
 
 # For pip installs, the role creates a venv at this path
 mailman3_install_dir: /opt/mailman3
@@ -193,7 +195,7 @@ __mailman3_config_default:
 __mailman3_config_merged: "{{ __mailman3_config_default | combine(mailman3_config | default({}), recursive=True) }}"
 
 __mailman3_django_config_default:
-  admins: []
+  admins: "{{ mailman3_django_superusers }}"
   allowed_hosts: []
   rest_api_url: "http://{{ mailman3_core_api_hostname }}:{{ mailman3_core_api_port }}"
   rest_api_user: "{{ mailman3_core_api_admin_user }}"
@@ -206,7 +208,8 @@ __mailman3_django_config_default:
       PASSWORD: ''
       HOST: ''
       PORT: ''
-  use_x_forwarded_host: true
+  # Disable by default, recommended Django setup for nginx passes Host, not X-Forwarded-Host
+  #use_x_forwarded_host: true
   secure_proxy_ssl_header: HTTP_X_FORWARDED_PROTO
   default_http_protocol: https
   default_from_email: postorius@localhost.local

@@ -1,11 +1,30 @@
+{% macro getsock(sock) -%}
+    {% if domain is defined -%}
+        {% if ':' in sock -%}
+            {% set host, port = sock.rsplit(':', 1) -%}
+            {{ [host, (port | int) + site_id - 1] | join(':') }}
+        {% else -%}
+            {% set path, ext = sock | splitext -%}
+            {{ [path, '_' ~ domain, ext] | join('') }}
+        {% endif -%}
+    {% else -%}
+        {{ sock }}
+    {% endif -%}
+{% endmacro -%}
+
 [uwsgi]
-# Port on which uwsgi will be listening.
-uwsgi-socket = {{ mailman3_uwsgi_socket }}
-{% if mailman3_http_socket is defined %}
-http-socket = {{ mailman3_http_socket }}
+{% if domain is defined %}
+# Django settings module to load
+env = DJANGO_SETTINGS_MODULE=settings{{ '_' ~ domain | replace('.', '_') | replace('-', '_') }}
 {% endif %}
 
-#Enable threading for python
+# Port on which uwsgi will be listening.
+uwsgi-socket = {{ getsock(mailman3_uwsgi_socket) }}
+{% if mailman3_http_socket is defined %}
+http-socket = {{ getsock(mailman3_http_socket) }}
+{% endif %}
+
+# Enable threading for python
 enable-threads = true
 
 # Move to the directory wher the django files are.
@@ -43,15 +62,15 @@ static-map = /static={{ mailman3_django_static_dir }}
 
 {% endif %}
 # Setup the request log.
-req-logger = file:{{ mailman3_django_log_dir }}/uwsgi.log
+req-logger = file:{{ mailman3_django_log_dir }}/uwsgi{{ '_' ~ domain if domain is defined else '' }}.log
 
 # Log cron seperately.
-logger = cron file:{{ mailman3_django_log_dir }}/uwsgi-cron.log
+logger = cron file:{{ mailman3_django_log_dir }}/uwsgi-cron{{ '_' ~ domain if domain is defined else '' }}.log
 log-route = cron uwsgi-cron
 
 # Log qcluster commands seperately.
-logger = qcluster file:{{ mailman3_django_log_dir }}/uwsgi-qcluster.log
+logger = qcluster file:{{ mailman3_django_log_dir }}/uwsgi-qcluster{{ '_' ~ domain if domain is defined else '' }}.log
 log-route = qcluster uwsgi-daemons
 
 # Last log and it logs the rest of the stuff.
-logger = file:{{ mailman3_django_log_dir }}/uwsgi-error.log
+logger = file:{{ mailman3_django_log_dir }}/uwsgi-error{{ '_' ~ domain if domain is defined else '' }}.log

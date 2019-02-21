@@ -14,12 +14,17 @@
 - name: Flush handlers
   meta: flush_handlers
 
-- name: Ensure services are enabled and running
+- name: Ensure Mailman Core is enabled and running
   service:
-    name: "{{ item }}"
+    name: "{{ mailman3_core_service_name }}"
     enabled: yes
     state: started
-  with_items:
-    - "{{ mailman3_core_service_name }}"
-    - "{{ mailman3_web_service_name }}"
+  when: mailman3_process_manager != "supervisor"
+
+- name: Ensure Mailman Web is enabled and running
+  service:
+    name: "{{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}{{ item }}"
+    enabled: yes
+    state: started
+  loop: "{{ mailman3_domains | default(['']) }}"
   when: mailman3_process_manager != "supervisor"

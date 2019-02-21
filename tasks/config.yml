@@ -46,6 +46,23 @@
   notify:
     - restart mailman3-web service
 
+- name: Create Django site configs
+  copy:
+    content: |
+      # import project settings first
+      from settings import *
+      # override any configured SITE_ID
+      SITE_ID = {{ site_id + 1 }}
+      FILTER_VHOST = True
+    dest: "{{ mailman3_django_project_dir }}/settings_{{ domain | replace('.', '_') | replace('-', '_') }}.py"
+  loop: "{{ mailman3_domains | default([]) }}"
+  loop_control:
+    index_var: site_id
+    loop_var: domain
+  when: mailman3_domains is defined
+  notify:
+    - restart mailman3-web service
+
 # This runs before collectstatic because it creates the log file, which must be created as the web user
 - name: Create/update Django DB schema
   django_manage:
@@ -72,18 +89,12 @@
     command: >-
       shell -c 'import sys;
       from django.contrib.auth.models import User;
-      sys.stdout.write("exists") if User.objects.filter(username="{{ item.name }}").count() > 0 else sys.stdout.write("create")'
-    #  sys.exit(0 if User.objects.filter(username="{{ item.name }}").count() > 0 else 1)'
+      sys.stdout.write("exists") if User.objects.filter(username="{{ item.name }}").count() > 0 else sys.stdout.write("missing")'
     app_path: "{{ mailman3_django_project_dir }}"
     virtualenv: "{{ mailman3_install_dir }}"
   with_items: "{{ mailman3_django_superusers }}"
   register: __mailman3_checksuperuser_result
-  #check_mode: true
-  #ignore_errors: true
-  #failed_when: false
-  #changed_when: item.rc != 0
-  #changed_when: item is failed
-  changed_when: __mailman3_checksuperuser_result.out == "create"
+  changed_when: __mailman3_checksuperuser_result.out == "missing"
   loop_control:
     label: "{{ item.name }}"
   # FIXME:
@@ -109,13 +120,55 @@
   become: yes
   become_user: "{{ mailman3_web_user }}"
 
+- name: Check Django sites
+  django_manage:
+    command: >-
+      shell -c 'import sys;
+      from django.contrib.sites.models import Site;
+      sys.stdout.write("exists") if Site.objects.filter(domain="example.com").count() > 0 else sys.stdout.write("missing")'
+    app_path: "{{ mailman3_django_project_dir }}"
+    virtualenv: "{{ mailman3_install_dir }}"
+  register: __mailman3_checkexamplesite_result
+  changed_when: __mailman3_checkexamplesite_result.out == "exists"
+  # FIXME:
+  become: yes
+  become_user: "{{ mailman3_web_user }}"
+
+- name: Correct default Django site
+  django_manage:
+    command: >-
+      shell -c 'from django.contrib.sites.models import Site;
+      Site.objects.filter(domain="example.com").update(
+      domain="{{ (mailman3_domains | default([])).0 | default(inventory_hostname) }}",
+      name="{{ (mailman3_domains | default([])).0 | default(inventory_hostname) }}"
+      )'
+    app_path: "{{ mailman3_django_project_dir }}"
+    virtualenv: "{{ mailman3_install_dir }}"
+  when: __mailman3_checkexamplesite_result is changed
+  changed_when: true
+  # FIXME:
+  become: yes
+  become_user: "{{ mailman3_web_user }}"
+
+# TODO: create additional domains (for right now the admin can do this in the UI)
+
 - name: Create/update uWSGI configuration file
   template:
     src: uwsgi.ini.j2
     dest: "{{ mailman3_etc_dir }}/uwsgi.ini"
-  when: __mailman3_pip
+  when: __mailman3_pip and mailman3_domains is not defined
   notify:
     - restart mailman3-web service
+
+- name: Create/update uWSGI domain configuration files
+  template:
+    src: uwsgi.ini.j2
+    dest: "{{ mailman3_etc_dir }}/uwsgi_{{ domain }}.ini"
+  loop: "{{ mailman3_domains | default([]) }}"
+  loop_control:
+    index_var: site_id
+    loop_var: domain
+  when: mailman3_domains is defined
 
 # This is idempotent so it's safe to do as an always-run task
 - name: Compress CSS

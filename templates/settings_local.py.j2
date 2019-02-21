@@ -10,6 +10,7 @@ ADMINS = (
 {% endfor %}
 )
 
+# If using multiple domains, this value is overridden in {{ mailman3_django_project_dir }}/settings_DOMAIN.py
 SITE_ID = {{ __mailman3_django_config_merged.site_id | default(1) }}
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False

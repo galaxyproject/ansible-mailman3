@@ -33,6 +33,8 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
+m = os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
+# https://github.com/unbit/uwsgi/issues/1980
+os.environ["DJANGO_SETTINGS_MODULE"] = m.replace('-', '_').replace('.', '_')
 
 application = get_wsgi_application()

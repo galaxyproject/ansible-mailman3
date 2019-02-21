@@ -12,6 +12,7 @@
 
 - name: restart mailman3-web service
   service:
-    name: "{{ mailman3_web_service_name }}"
+    name: "{{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}{{ item }}"
     state: restarted
+  loop: "{{ mailman3_domains | default(['']) }}"
   when: ansible_virtualization_type != "docker"

@@ -80,11 +80,16 @@
 
 - name: Install systemd service unit files
   template:
-    src: "{{ item }}.j2"
-    dest: /etc/systemd/system/{{ item }}
-  with_items:
+    src: "{{ item.src | default(item) }}.j2"
+    dest: /etc/systemd/system/{{ item.dest | default(item) }}
+  loop:
     - mailman3-core.service
-    - mailman3-web.service
+    - src: mailman3-web.service
+      dest: mailman3-web{{ '@' if mailman3_domains is defined else '' }}.service
+  loop_control:
+    label: "{{ item.dest | default(item) }}"
   when: mailman3_process_manager == 'systemd'
   notify:
     - reload systemd manager configuration
+
+# TODO: remove the non-instance service unit file if mailman3_domains is defined, remove the instance service unit file

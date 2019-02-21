@@ -10,6 +10,8 @@ mailman3_python_uwsgi_package: pyuwsgi
 mailman3_backup_configs: false
 # list of dicts with keys `name`, `email`, `pass`
 mailman3_django_superusers: []
+# list of hosted domains
+#mailman3_domains: []
 
 # For pip installs, the role creates a venv at this path
 mailman3_install_dir: /opt/mailman3
@@ -196,7 +198,7 @@ __mailman3_config_merged: "{{ __mailman3_config_default | combine(mailman3_confi
 
 __mailman3_django_config_default:
   admins: "{{ mailman3_django_superusers }}"
-  allowed_hosts: []
+  allowed_hosts: "{{ mailman3_domains | default([inventory_hostname]) }}"
   rest_api_url: "http://{{ mailman3_core_api_hostname }}:{{ mailman3_core_api_port }}"
   rest_api_user: "{{ mailman3_core_api_admin_user }}"
   rest_api_pass: "{{ mailman3_core_api_admin_pass }}"

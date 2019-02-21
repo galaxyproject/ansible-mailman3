@@ -170,6 +170,7 @@ mailman3_core_api_hostname: localhost
 mailman3_core_api_port: 8001
 mailman3_core_api_admin_user: restadmin
 mailman3_core_api_admin_pass: restpass
+mailman3_archiver_key: SecretArchiverAPIKey
 
 __mailman3_config_default:
   mailman:
@@ -194,6 +195,10 @@ __mailman3_config_default:
     admin_user: "{{ mailman3_core_api_admin_user }}"
     admin_pass: "{{ mailman3_core_api_admin_pass }}"
     api_version: "3.1"
+  archiver.hyperkitty:
+    class: mailman_hyperkitty.Archiver
+    enable: "yes"
+    configuration: "{{ mailman3_etc_dir }}/hyperkitty.cfg"
 __mailman3_config_merged: "{{ __mailman3_config_default | combine(mailman3_config | default({}), recursive=True) }}"
 
 __mailman3_django_config_default:
@@ -202,6 +207,7 @@ __mailman3_django_config_default:
   rest_api_url: "http://{{ mailman3_core_api_hostname }}:{{ mailman3_core_api_port }}"
   rest_api_user: "{{ mailman3_core_api_admin_user }}"
   rest_api_pass: "{{ mailman3_core_api_admin_pass }}"
+  archiver_key: "{{ mailman3_archiver_key }}"
   databases:
     default:
       ENGINE: django.db.backends.sqlite3

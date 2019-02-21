@@ -10,6 +10,18 @@
   notify:
     - restart mailman3-core service
 
+# FIXME:
+- name: Create HyperKitty configuration file
+  copy:
+    content: |
+      [general]
+      base_url: http://localhost/hyperkitty/
+      api_key: {{ mailman3_archiver_key }}
+    dest: "{{ mailman3_etc_dir }}/hyperkitty.cfg"
+    group: "{{ __mailman3_group_name }}"
+  notify:
+    - restart mailman3-core service
+
 - name: Create/update Django project
   template:
     src: "{{ item.name }}.j2"
@@ -169,6 +181,8 @@
     index_var: site_id
     loop_var: domain
   when: mailman3_domains is defined
+  notify:
+    - restart mailman3-web service
 
 # This is idempotent so it's safe to do as an always-run task
 - name: Compress CSS

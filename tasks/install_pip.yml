@@ -19,20 +19,6 @@
     name: "{{ mailman3_packages }}"
     virtualenv: "{{ mailman3_install_dir }}"
 
-- name: Get Mailman user group ID
-  getent:
-    database: passwd
-    key: "{{ __mailman3_user_name }}"
-
-- name: Get Mailman user group name
-  getent:
-    database: group
-    key: "{{ getent_passwd[__mailman3_user_name][2] }}"
-
-- name: Set Mailman user group fact
-  set_fact:
-    __mailman3_group_name: "{{ getent_group | first }}"
-
 - name: Create configuration, data, and state directories
   file:
     path: "{{ item.path }}"

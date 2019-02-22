@@ -4,11 +4,14 @@
   include_tasks: user.yml
   when: mailman3_create_user
 
+- name: Include group discovery tasks
+  import_tasks: group_discovery.yml
+
 - name: Include installation tasks
   import_tasks: "install_{{ mailman3_install_method }}.yml"
 
 - name: Include configuration tasks
-  import_tasks: "config.yml"
+  import_tasks: config.yml
 
 # Perform whatever restarts are needed now, prevents double restart on first run
 - name: Flush handlers

@@ -13,6 +13,10 @@
 - name: Include configuration tasks
   import_tasks: config.yml
 
+- name: Include Postfix map distribution tasks
+  include_tasks: distribute_maps.yml
+  when: mailman3_distribute_maps is defined
+
 # Perform whatever restarts are needed now, prevents double restart on first run
 - name: Flush handlers
   meta: flush_handlers

@@ -1,0 +1,44 @@
+---
+
+- name: Install Ansible
+  pip:
+    name: ansible
+    virtualenv: "{{ mailman3_distribute_maps_dir }}"
+    virtualenv_command: "{{ mailman3_virtualenv_command | default(omit) }}"
+    virtualenv_python: "{{ mailman3_virtualenv_python | default(omit) }}"
+
+- name: Create playbook directory
+  file:
+    path: "{{ mailman3_distribute_maps_dir }}/etc"
+    state: directory
+    group: "{{ __mailman3_group_name }}"
+    mode: "0750"
+
+- name: Create playbook files
+  copy:
+    src: "distribute_maps.{{ item }}"
+    dest: "{{ mailman3_distribute_maps_dir }}/etc/{{ item }}"
+    group: "{{ __mailman3_group_name }}"
+    mode: "0640"
+  loop:
+    - playbook.yml
+    - ansible.cfg
+
+# TODO: dig lookup plugin based inventory plugin
+- name: Create hosts file
+  template:
+    src: hosts.distribute_maps.j2
+    dest: "{{ mailman3_distribute_maps_dir }}/etc/hosts"
+    group: "{{ __mailman3_group_name }}"
+    mode: "0640"
+
+- name: Create cron job
+  cron:
+    name: Distribute Mailman 3 Postfix Maps
+    cron_file: ansible_mailman3_distribute_maps
+    user: "{{ __mailman3_user_name }}"
+    minute: "*/{{ mailman3_distribute_map_frequency | default(5) }}"
+    job: >-
+      cd {{ mailman3_distribute_maps_dir | quote }}/etc &&
+      {{ mailman3_distribute_maps_dir | quote }}/bin/ansible-playbook playbook.yml
+      >>{{ mailman3_log_dir }}/distribute_maps.log 2>&1

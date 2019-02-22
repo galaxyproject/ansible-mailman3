@@ -13,6 +13,16 @@ mailman3_django_superusers: []
 # list of hosted domains
 #mailman3_domains: []
 
+# Distribute Postfix maps to MXs for use with relay_recipient_maps, so that MXs can reject mail to nonexistent
+# addresses. Installs Ansible and a playbook in a virtualenv. User/auth setup is up to you.
+#
+# list of dicts, required keys:
+#   host: inventory_hostname of mx (or "all") for vars to apply to all hosts
+#   mailman3_distribute_maps_dir: remote directory on mx to distribute maps to
+# all keys other than "host" are set as either host vars or in [all:vars] if host = "all"
+#mailman3_distribute_maps: []
+mailman3_distribute_maps_dir: "{{ mailman3_var_dir }}/distribute_maps"
+
 # For pip installs, the role creates a venv at this path
 mailman3_install_dir: /opt/mailman3
 

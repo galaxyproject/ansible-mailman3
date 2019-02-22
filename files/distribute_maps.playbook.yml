@@ -1,0 +1,19 @@
+---
+
+- name: Distribute Mailman transport maps to backup MX servers
+  hosts: all
+  tasks:
+    - name: Check postfix_lmtp
+      stat:
+        path: "{{ mailman3_var_dir }}/data/postfix_lmtp"
+      register: result
+    - name: Copy postfix_lmtp
+      copy:
+        src: "{{ mailman3_var_dir }}/data/postfix_lmtp"
+        dest: "{{ mailman3_distribute_maps_dir }}/postfix_lmtp"
+      when: result.stat.exists
+      notify:
+        - postmap
+  handlers:
+    - name: postmap
+      command: "{{ mailman3_postmap_command | default('postmap') }} {{ mailman3_distribute_maps_dir | quote }}/postfix_lmtp"

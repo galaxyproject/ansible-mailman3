@@ -60,6 +60,8 @@ mailman3_packages: >-
         __mailman3_debian_packages if __mailman3_debian else
         __mailman3_redhat_packages)
     }}
+# for e.g. psycopg2
+mailman3_extra_packages: []
 
 # Dependant system packages needed if using the pip install method
 __mailman3_debian_system_dependency_packages:

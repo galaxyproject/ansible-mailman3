@@ -16,7 +16,7 @@
 
 - name: Install Mailman and Python dependencies
   pip:
-    name: "{{ mailman3_packages }}"
+    name: "{{ mailman3_packages + mailman3_extra_packages }}"
     virtualenv: "{{ mailman3_install_dir }}"
 
 - name: Create configuration, data, and state directories

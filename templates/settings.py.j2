@@ -184,7 +184,7 @@ COMPRESS_PRECOMPILERS = (
 HAYSTACK_CONNECTIONS = {
     'default': {
         'ENGINE': 'haystack.backends.whoosh_backend.WhooshEngine',
-        'PATH': os.path.join(BASE_DIR, "fulltext_index"),
+        'PATH': os.path.join("{{ mailman3_django_var_dir }}", "fulltext_index"),
         # You can also use the Xapian engine, it's faster and more accurate,
         # but requires another library.
         # http://django-haystack.readthedocs.io/en/v2.4.1/installing_search_engines.html#xapian
@@ -286,7 +286,7 @@ LOGGING = {
 # while you're fiddling with the code.
 if DEBUG == True:
     EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
-    EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'emails')
+    EMAIL_FILE_PATH = os.path.join("{{ mailman3_django_var_dir }}", 'emails')
 
 
 # galaxyproject.mailman3: settings_local.py is required, no exception handling

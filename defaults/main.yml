@@ -12,6 +12,9 @@ mailman3_backup_configs: false
 mailman3_django_superusers: []
 # list of hosted domains
 #mailman3_domains: []
+# If mailman3_domains is set, mailman3_config.default_from_email is ignored since it's assumed you want per-domain
+# addresses. In this case, set the username portion of the email (the domain will be added automatically)
+mailman3_default_from_user: postorius
 
 # Distribute Postfix maps to MXs for use with relay_recipient_maps, so that MXs can reject mail to nonexistent
 # addresses. Installs Ansible and a playbook in a virtualenv. User/auth setup is up to you.
@@ -232,8 +235,8 @@ __mailman3_django_config_default:
   #use_x_forwarded_host: true
   secure_proxy_ssl_header: HTTP_X_FORWARDED_PROTO
   default_http_protocol: https
-  default_from_email: postorius@localhost.local
-  server_email: root@localhost.local
+  default_from_email: postorius@{{ inventory_hostname }}
+  server_email: root@{{ inventory_hostname }}
   compress_offline: true
   socialaccount_providers: {}
 __mailman3_django_config_merged: "{{ __mailman3_django_config_default | combine(mailman3_django_config | default({}), recursive=True) }}"

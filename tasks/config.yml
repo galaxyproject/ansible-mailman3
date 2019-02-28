@@ -66,6 +66,7 @@
       # override any configured SITE_ID
       SITE_ID = {{ site_id + 1 }}
       FILTER_VHOST = True
+      DEFAULT_FROM_EMAIL = '{{ mailman3_default_from_user }}@{{ domain }}'
     dest: "{{ mailman3_django_project_dir }}/settings_{{ domain | replace('.', '_') | replace('-', '_') }}.py"
   loop: "{{ mailman3_domains | default([]) }}"
   loop_control:

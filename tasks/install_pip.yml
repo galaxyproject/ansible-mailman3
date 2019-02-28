@@ -65,6 +65,15 @@
       owner: "{{ mailman3_web_user }}"
       group: "{{ mailman3_web_group }}"
 
+- name: Create HyperKitty attachment directory
+  file:
+    path: "{{ __mailman3_django_config_merged.hyperkitty_attachment_folder }}"
+    owner: "{{ mailman3_web_user }}"
+    group: "{{ mailman3_web_group }}"
+    mode: "0750"
+    state: directory
+  when: __mailman3_django_config_merged.hyperkitty_attachment_folder is defined
+
 # TODO: This is needed to read settings_local.py from /etc/opt/mailman3, but will it be needed for anything else?
 # TODO: config option to control this?
 - name: Add web user to Mailman user group

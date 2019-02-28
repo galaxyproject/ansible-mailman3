@@ -199,5 +199,8 @@ COMPRESS_OFFLINE = {{ 'True' if __mailman3_django_config_merged.compress_offline
 # Only display mailing-lists from the same virtual host as the webserver
 FILTER_VHOST = False
 
+{% if __mailman3_django_config_merged.hyperkitty_attachment_folder is defined %}
+HYPERKITTY_ATTACHMENT_FOLDER = '{{ __mailman3_django_config_merged.hyperkitty_attachment_folder }}'
+{% endif %}
 
 POSTORIUS_TEMPLATE_BASE_URL = 'http://localhost:8000'

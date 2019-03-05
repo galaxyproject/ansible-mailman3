@@ -183,7 +183,7 @@ COMPRESS_PRECOMPILERS = (
 #
 HAYSTACK_CONNECTIONS = {
     'default': {
-        'ENGINE': 'haystack.backends.whoosh_backend.WhooshEngine',
+        'ENGINE': '{{ mailman3_django_haystack_engine | default("haystack.backends.whoosh_backend.WhooshEngine") }}',
         'PATH': os.path.join("{{ mailman3_django_var_dir }}", "fulltext_index"),
         # You can also use the Xapian engine, it's faster and more accurate,
         # but requires another library.

@@ -10,7 +10,6 @@
   notify:
     - restart mailman3-core service
 
-# FIXME:
 - name: Create HyperKitty configuration file
   copy:
     content: |
@@ -38,6 +37,8 @@
     - name: wsgi.py
       mode: "0644"
   when: __mailman3_pip
+  notify:
+    - restart mailman3-web service
 
 - name: Create/update Django local settings
   template:

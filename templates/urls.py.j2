@@ -23,11 +23,13 @@ from django.urls import reverse_lazy
 from django.views.generic import RedirectView
 
 urlpatterns = [
+{% if mailman3_postorius_root %}
     url(r'^$', RedirectView.as_view(
         url=reverse_lazy('list_index'),
         permanent=True)),
-    url(r'^postorius/', include('postorius.urls')),
-    url(r'^hyperkitty/', include('hyperkitty.urls')),
+{% endif %}
+    url(r'^{{ mailman3_postorius_root }}', include('postorius.urls')),
+    url(r'^{{ mailman3_hyperkitty_root }}', include('hyperkitty.urls')),
     url(r'', include('django_mailman3.urls')),
     url(r'^accounts/', include('allauth.urls')),
     # Django admin

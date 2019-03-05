@@ -241,6 +241,9 @@ __mailman3_django_config_default:
   socialaccount_providers: {}
 __mailman3_django_config_merged: "{{ __mailman3_django_config_default | combine(mailman3_django_config | default({}), recursive=True) }}"
 
+mailman3_postorius_root: 'postorius/'
+mailman3_hyperkitty_root: 'hyperkitty/'
+
 #mailman3_user: mailman
 mailman3_create_user: "{{ __mailman3_pip and not __mailman3_debian }}"
 

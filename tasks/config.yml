@@ -14,7 +14,7 @@
   copy:
     content: |
       [general]
-      base_url: http://localhost/hyperkitty/
+      base_url: http://localhost/{{ mailman3_hyperkitty_root }}
       api_key: {{ mailman3_archiver_key }}
     dest: "{{ mailman3_etc_dir }}/hyperkitty.cfg"
     group: "{{ __mailman3_group_name }}"

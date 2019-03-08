@@ -7,6 +7,8 @@
       stat:
         path: "{{ mailman3_var_dir }}/data/postfix_lmtp"
       register: result
+      delegate_to: localhost
+      run_once: true
     - name: Copy postfix_lmtp
       copy:
         src: "{{ mailman3_var_dir }}/data/postfix_lmtp"

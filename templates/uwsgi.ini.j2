@@ -1,14 +1,16 @@
 {% macro getsock(sock) -%}
-    {% if domain is defined -%}
-        {% if ':' in sock -%}
-            {% set host, port = sock.rsplit(':', 1) -%}
-            {{ [host, (port | int) + site_id - 1] | join(':') }}
-        {% else -%}
+    {%- if domain is defined -%}
+        {%- if ':' in sock -%}
+{#          BUG: there is no 'site_id' defined at this point. #}
+{#            {% set host, port = sock.rsplit(':', 1) -%}#}
+{#            {{ [host, (port | int) + site_id - 1] | join(':') }}#}
+            {{- sock -}}
+        {%- else -%}
             {% set path, ext = sock | splitext -%}
-            {{ [path, '_' ~ domain, ext] | join('') }}
+            {{- [path, '_' ~ domain, ext] | join('') -}}
         {% endif -%}
-    {% else -%}
-        {{ sock }}
+    {%- else -%}
+        {{- sock -}}
     {% endif -%}
 {% endmacro -%}
 
@@ -35,8 +37,8 @@ wsgi-file = wsgi.py
 
 # Setup default number of processes and threads per process.
 master = true
-process = 2
-threads = 2
+process = 4
+threads = 4
 
 # Drop privielges and don't run as root.
 uid = {{ mailman3_web_user }}

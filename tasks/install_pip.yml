@@ -19,19 +19,18 @@
     name: "{{ mailman3_packages + mailman3_extra_packages }}"
     virtualenv: "{{ mailman3_install_dir }}"
 
-- name: Create configuration, data, and state directories
+- name: Create configuration, data, and state directories for Core
   file:
     path: "{{ item.path }}"
     owner: "{{ item.owner | default(omit) }}"
     group: "{{ item.group | default(omit) }}"
     mode: "{{ item.mode | default(omit) }}"
     state: directory
+    recurse: true
   with_items:
     - path: "{{ mailman3_etc_dir }}"
       group: "{{ __mailman3_group_name }}"
       mode: "0750"
-    # Creates the parent /var/opt/mailman3 with default permissions
-    - path: "{{ mailman3_var_dir | dirname }}"
     - path: "{{ mailman3_var_dir }}"
       owner: "{{ __mailman3_user_name }}"
       group: "{{ __mailman3_group_name }}"
@@ -40,30 +39,50 @@
       owner: "{{ __mailman3_user_name }}"
       group: "{{ __mailman3_group_name }}"
       mode: "0750"
+  when: mailman3_process_manager == 'systemd' and mailman3_run_m3core
+
+- name: Create configuration, data, and state directories for Postorius
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner | default(omit) }}"
+    group: "{{ item.group | default(omit) }}"
+    mode: "{{ item.mode | default(omit) }}"
+    state: directory
+    recurse: true
+  with_items:
+    - path: "{{ mailman3_etc_dir }}"
+      group: "{{ __mailman3_group_name }}"
+      mode: "0755"
+    - path: "{{ mailman3_log_dir }}"
+      owner: "{{ __mailman3_user_name }}"
+      group: "{{ __mailman3_group_name }}"
+      mode: "0755"
     - path: "{{ mailman3_django_var_dir }}"
     - path: "{{ mailman3_django_var_dir }}/run"
       owner: "{{ mailman3_web_user }}"
       group: "{{ mailman3_web_group }}"
-      mode: "0750"
+      mode: "0755"
     - path: "{{ mailman3_django_var_dir }}/db"
       owner: "{{ mailman3_web_user }}"
       group: "{{ mailman3_web_group }}"
-      mode: "0750"
+      mode: "0755"
     - path: "{{ mailman3_django_var_dir }}/fulltext_index"
       owner: "{{ mailman3_web_user }}"
       group: "{{ mailman3_web_group }}"
-      mode: "0750"
+      mode: "0755"
     - path: "{{ mailman3_django_var_dir }}/emails"
       owner: "{{ mailman3_web_user }}"
       group: "{{ mailman3_web_group }}"
-      mode: "0750"
+      mode: "0755"
     - path: "{{ mailman3_django_project_dir }}"
       group: "{{ mailman3_web_group }}"
-      mode: "0750"
+      mode: "0755"
     - path: "{{ mailman3_django_log_dir }}"
-      mode: "0750"
+      mode: "0755"
       owner: "{{ mailman3_web_user }}"
       group: "{{ mailman3_web_group }}"
+  when: mailman3_process_manager == 'systemd' and mailman3_run_postorius
+
 
 - name: Create HyperKitty attachment directory
   file:
@@ -72,7 +91,8 @@
     group: "{{ mailman3_web_group }}"
     mode: "0750"
     state: directory
-  when: __mailman3_django_config_merged.hyperkitty_attachment_folder is defined
+  when: mailman3_run_hyperkitty and __mailman3_django_config_merged.hyperkitty_attachment_folder is defined
+
 
 # TODO: This is needed to read settings_local.py from /etc/opt/mailman3, but will it be needed for anything else?
 # TODO: config option to control this?
@@ -81,18 +101,32 @@
     name: "{{ mailman3_web_user }}"
     groups: "{{ __mailman3_group_name }}"
 
-- name: Install systemd service unit files
+
+- name: Install systemd service unit files for Core
   template:
     src: "{{ item.src | default(item) }}.j2"
     dest: /etc/systemd/system/{{ item.dest | default(item) }}
   loop:
     - mailman3-core.service
+  loop_control:
+    label: "{{ item.dest | default(item) }}"
+  when: mailman3_process_manager == 'systemd' and mailman3_run_m3core
+  notify:
+    - reload systemd manager configuration
+
+
+- name: Install systemd service unit files for Postorius
+  template:
+    src: "{{ item.src | default(item) }}.j2"
+    dest: /etc/systemd/system/{{ item.dest | default(item) }}
+  loop:
     - src: mailman3-web.service
       dest: mailman3-web{{ '@' if mailman3_domains is defined else '' }}.service
   loop_control:
     label: "{{ item.dest | default(item) }}"
-  when: mailman3_process_manager == 'systemd'
+  when: mailman3_process_manager == 'systemd' and mailman3_run_postorius
   notify:
     - reload systemd manager configuration
 
-# TODO: remove the non-instance service unit file if mailman3_domains is defined, remove the instance service unit file
+# TODO: remove the non-instance service unit file if mailman3_domains is
+# defined, remove the instance service unit file

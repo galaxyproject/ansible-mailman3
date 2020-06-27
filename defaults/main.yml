@@ -24,6 +24,7 @@ mailman3_default_from_user: postorius
 #   mailman3_distribute_maps_dir: remote directory on mx to distribute maps to
 # all keys other than "host" are set as either host vars or in [all:vars] if host = "all"
 #mailman3_distribute_maps: []
+mailman3_distribute_maps: no
 mailman3_distribute_maps_dir: "{{ mailman3_var_dir }}/distribute_maps"
 
 # For pip installs, the role creates a venv at this path
@@ -48,38 +49,47 @@ __mailman3_pip: "{{ mailman3_install_method == 'pip' }}"
 # pip needed packages if using the pip install method, system packages if using the package method
 __mailman3_pip_packages:
   - whoosh
-  - django>=1.11
+  - django>=1.11,<3.0
   - mailman
+  - six
   - postorius
   - hyperkitty
+  - django-haystack
   - mailman-hyperkitty
   - "{{ mailman3_python_uwsgi_package }}"
+
 __mailman3_debian_packages:
   - mailman3-full
+
 __mailman3_redhat_packages: null  # currently nonexistent
+
 mailman3_packages: >-
     {{
         __mailman3_pip_packages if __mailman3_pip else (
         __mailman3_debian_packages if __mailman3_debian else
         __mailman3_redhat_packages)
     }}
+
 # for e.g. psycopg2
 mailman3_extra_packages: []
 
 # Dependant system packages needed if using the pip install method
 __mailman3_debian_system_dependency_packages:
   - python3             # requires Ubuntu >= 16.04, Debian >= stretch (for 3.5)
+  - python3-dev
   - python3-setuptools  # Ansible pip module needs this despite having venv; UPDATE: no it doesn't if it can find python3; UPDATE2: well now it does again, wtf
   - python3-venv
   - sassc
   - uwsgi
   - uwsgi-plugin-python3
+
 __mailman3_redhat_system_dependency_packages:
   # all require EPEL
   - python36    # requires EL7+
   - sassc
   - uwsgi
   - uwsgi-plugin-python36
+
 # TODO: as of `date`, compilers + python headers are required for these packages that don't have published cext wheels:
 #   - rcssmin
 #   - rjsmin
@@ -186,10 +196,20 @@ mailman3_core_api_port: 8001
 mailman3_core_api_admin_user: restadmin
 mailman3_core_api_admin_pass: restpass
 mailman3_archiver_key: SecretArchiverAPIKey
+mailman3_django_time_zone: Europe/London
+mailman3_admin_email_domain: "{{ inventory_hostname }}"
 
 __mailman3_config_default:
   mailman:
     layout: custom
+  mta:
+    configuration: python:mailman.config.exim4
+    incoming: mailman.mta.exim4.LMTP
+    outgoing: mailman.mta.deliver.deliver
+    lmtp_host: localhost
+    smtp_host: localhost
+    lmtp_port: 8024
+    smtp_port: 25
   paths.custom:
     var_dir: "{{ mailman3_var_dir }}"
     bin_dir: "$argv"
@@ -214,6 +234,7 @@ __mailman3_config_default:
     class: mailman_hyperkitty.Archiver
     enable: "yes"
     configuration: "{{ mailman3_etc_dir }}/hyperkitty.cfg"
+
 __mailman3_config_merged: "{{ __mailman3_config_default | combine(mailman3_config | default({}), recursive=True) }}"
 
 __mailman3_django_config_default:
@@ -231,14 +252,18 @@ __mailman3_django_config_default:
       PASSWORD: ''
       HOST: ''
       PORT: ''
-  # Disable by default, recommended Django setup for nginx passes Host, not X-Forwarded-Host
-  #use_x_forwarded_host: true
+  secret_key: change.me
   secure_proxy_ssl_header: HTTP_X_FORWARDED_PROTO
   default_http_protocol: https
-  default_from_email: postorius@{{ inventory_hostname }}
-  server_email: root@{{ inventory_hostname }}
+  install_admin_app: no
+  default_from_email: "postorius@{{ mailman3_admin_email_domain }}"
+  server_email: "root@{{ mailman3_admin_email_domain }}"
   compress_offline: true
+  # Disable by default, recommended Django setup for nginx passes Host, not X-Forwarded-Host
+  use_x_forwarded_host: false
   socialaccount_providers: {}
+  time_zone: "{{ mailman3_django_time_zone }}"
+
 __mailman3_django_config_merged: "{{ __mailman3_django_config_default | combine(mailman3_django_config | default({}), recursive=True) }}"
 
 mailman3_postorius_root: 'postorius/'

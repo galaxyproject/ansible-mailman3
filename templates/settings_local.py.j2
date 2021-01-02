@@ -17,8 +17,7 @@ SITE_ID = {{ __mailman3_django_config_merged.site_id | default(1) }}
 # See https://docs.djangoproject.com/en/1.8/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = [
     "localhost",  # Archiving API from Mailman, keep it.
-    # Add here all production URLs you may have.
-{% for host in __mailman3_django_config_merged.allowed_hosts %}
+{% for host in __mailman3_django_config_merged.allowed_hosts |unique %}
     "{{ host }}",
 {% endfor %}
 ]
@@ -40,10 +39,10 @@ INSTALLED_APPS = (
     'hyperkitty',
     'postorius',
     'django_mailman3',
-    # Uncomment the next line to enable the admin:
+{% if __mailman3_django_config_merged.install_admin_app  %}
     'django.contrib.admin',
-    # Uncomment the next line to enable admin documentation:
-    # 'django.contrib.admindocs',
+    'django.contrib.admindocs',
+{% endif %}
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',

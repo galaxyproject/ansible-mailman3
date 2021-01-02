@@ -23,12 +23,12 @@
     vtype: "{{ item.vtype }}"
   when: ansible_os_family == "Debian"
   with_items:
-      - question: "mailman/site_languages"
-        value: "{{ mailman3_language }}"
-        type: "multiselect"
-      - question: "mailman/default_server_language"
-        value: "{{ mailman3_language }}"
-        vtype: "multiselect"
+    - question: "mailman/site_languages"
+      value: "{{ mailman3_language }}"
+      type: "multiselect"
+    - question: "mailman/default_server_language"
+      value: "{{ mailman3_language }}"
+      vtype: "multiselect"
 
 - name: Install Mailman and dependency packages
   package:

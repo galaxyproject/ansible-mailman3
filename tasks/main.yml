@@ -15,7 +15,7 @@
 
 - name: Include Postfix map distribution tasks
   include_tasks: distribute_maps.yml
-  when: mailman3_distribute_maps is defined
+  when: mailman3_distribute_maps is defined and mailman3_distribute_maps
 
 # Perform whatever restarts are needed now, prevents double restart on first run
 - name: Flush handlers
@@ -26,7 +26,7 @@
     name: "{{ mailman3_core_service_name }}"
     enabled: yes
     state: started
-  when: mailman3_process_manager != "supervisor"
+  when: mailman3_process_manager != "supervisor" and mailman3_run_m3core
 
 - name: Ensure Mailman Web is enabled and running
   service:
@@ -34,4 +34,4 @@
     enabled: yes
     state: started
   loop: "{{ mailman3_domains | default(['']) }}"
-  when: mailman3_process_manager != "supervisor"
+  when: mailman3_process_manager != "supervisor" and mailman3_run_postorius

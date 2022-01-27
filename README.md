@@ -9,9 +9,10 @@ maintainer to do it for you**.
 
 Mailman enables mailing lists to be managed on a mail server, can cope
 with multiple virtual domains (e.g  both example.com and example.net),
-and takes care of list membership issues. However it does require a
-properly set up Mail Transfer Agent (MTA) such as exim, qmail, postfix
-or similar to both accept and deliver email.
+deals with munging emails to account for DMARC and adding header and
+footer parts, and takes care of list membership issues. However it
+does require a properly set up Mail Transfer Agent (MTA) such as exim,
+qmail, postfix or similar to both accept and deliver email.
 
 This role is capable of working with several MTAs, but has been developed 
 alongside exim4 and as such may have glitches with other options.
@@ -29,19 +30,30 @@ available in many places.
 Role Variables
 --------------
 
-Refer to default/main.yml for the role variables, which are somewhat
+Refer to `default/main.yml` for the role variables, which are somewhat
 documented there.
+
+There are two 'halves' of mailman3: the Core, which does the actual work
+of accepting email and running lists, and the Django web front end, which
+enables admins and users to see some settings, add and remove members, etc,
+using a web front end. The Django side interacts with the Core using a REST
+API, and if this link breaks the Web side wont work, but the Core will.
+
+Given this split, the role variables are also split in the same way, and
+this ansible role enables you to place core and django on different hosts.
+Be aware, though, that a one-host solution will be simpler to start with.
 
 Most configuration is done by merging the default config dictionary with a
 custom (playbook-provided) dict. Some default items can be set individually
 as well, so there are two ways to define some items.
 
-In your playbook, most config can be set in "mailman3\_config":
-or "mailman3\_django":, which will be merged to make
-"\_\_mailman3\_config\_merged".
+In your playbook, most config can be set in your playbook's "mailman3\_config"
+or "mailman3\_django" keys, which will be merged with the default keys to
+make "\_\_mailman3\_config\_merged" and "\_\_mailman3\_django\_config\_merged",
+respectively.
 
-In config.yml some debug actions are commented out, and enabling them
-may be helpful to understand what you have set.
+In the config.yml some debug actions are commented out, and temporarily
+enabling them may be helpful to understand what you have set.
 
 Some suggestions:
 
@@ -65,11 +77,12 @@ Some suggestions:
 Dependencies
 ------------
 
-This role works well with rivimey.exim to configure the Exim MTA, but does
-not require it.
+This role works well with the rivimey/exim role to configure the Exim MTA,
+but does not require it.
 
-It is necessary for an MTA to be available, to both deliver mail to mailman3
-(over LMTP) and to accept mail for distribution from it (over SMTP).
+It is however necessary for an MTA to be available, to both deliver mail to
+mailman3 (over LMTP) and to accept mail for distribution from it (over SMTP).
+
 
 Example Playbook
 ----------------
@@ -95,6 +108,7 @@ mailman3_distribute_maps: no
 
 # Database selection, passwords
 mailman3_core_db_host: mailman-core.ivimey.org
+# Select the DB backend. 'mysql' includes 'mariadb'
 mailman3_core_db_type: mysql    # sqlite3 | postgres | mysql
 # mailman_db_password: [vault]
 # mailman_webdb_password: [vault]

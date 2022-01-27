@@ -5,8 +5,9 @@
     name: "{{ mailman3_system_dependency_packages }}"
   when: mailman3_install_system_dependencies
 
-# This is a separate task from the next one because `python3 -m venv` doesn't install wheel and pip needs it to build
-# wheels (not strictly required, but preferred) and won't load it mid-invocation if installed during the next task
+# This is a separate task from the next one because `python3 -m venv` doesn't install wheel and
+# pip needs it to build wheels (not strictly required, but preferred) and won't load it
+# mid-invocation if installed during the next task
 - name: Create Mailman venv
   pip:
     name: wheel
@@ -19,6 +20,15 @@
     name: "{{ mailman3_packages + mailman3_extra_packages }}"
     virtualenv: "{{ mailman3_install_dir }}"
 
+- name: Patch sources to enable separated hosts by supporting 'listen'
+  ansible.posix.patch:
+    src: mailman-listen.patch
+    basedir: "/opt/mailman3/lib/{{ mailman3_python_version }}/site-packages"
+    state: present
+  ignore_errors: True
+  tags:
+    - mm_exp
+
 - name: Create configuration, data, and state directories for Core
   file:
     path: "{{ item.path }}"
@@ -26,19 +36,10 @@
     group: "{{ item.group | default(omit) }}"
     mode: "{{ item.mode | default(omit) }}"
     state: directory
-    recurse: true
   with_items:
-    - path: "{{ mailman3_etc_dir }}"
-      group: "{{ __mailman3_group_name }}"
-      mode: "0750"
-    - path: "{{ mailman3_var_dir }}"
-      owner: "{{ __mailman3_user_name }}"
-      group: "{{ __mailman3_group_name }}"
-      mode: "0750"
-    - path: "{{ mailman3_log_dir }}"
-      owner: "{{ __mailman3_user_name }}"
-      group: "{{ __mailman3_group_name }}"
-      mode: "0750"
+    - { path: "{{ mailman3_etc_dir }}",                                        group: "{{ __mailman3_group_name }}",  mode: "0750" }
+    - { path: "{{ mailman3_var_dir }}",  owner: "{{ __mailman3_user_name }}",  group: "{{ __mailman3_group_name }}",  mode: "0750" }
+    - { path: "{{ mailman3_log_dir }}",  owner: "{{ __mailman3_user_name }}",  group: "{{ __mailman3_group_name }}",  mode: "0750" }
   when: mailman3_process_manager == 'systemd' and mailman3_run_m3core
 
 - name: Create configuration, data, and state directories for Postorius
@@ -48,41 +49,26 @@
     group: "{{ item.group | default(omit) }}"
     mode: "{{ item.mode | default(omit) }}"
     state: directory
-    recurse: true
   with_items:
-    - path: "{{ mailman3_etc_dir }}"
-      group: "{{ __mailman3_group_name }}"
-      mode: "0755"
-    - path: "{{ mailman3_log_dir }}"
-      owner: "{{ __mailman3_user_name }}"
-      group: "{{ __mailman3_group_name }}"
-      mode: "0755"
-    - path: "{{ mailman3_django_var_dir }}"
-    - path: "{{ mailman3_django_var_dir }}/run"
-      owner: "{{ mailman3_web_user }}"
-      group: "{{ mailman3_web_group }}"
-      mode: "0755"
-    - path: "{{ mailman3_django_var_dir }}/db"
-      owner: "{{ mailman3_web_user }}"
-      group: "{{ mailman3_web_group }}"
-      mode: "0755"
-    - path: "{{ mailman3_django_var_dir }}/fulltext_index"
-      owner: "{{ mailman3_web_user }}"
-      group: "{{ mailman3_web_group }}"
-      mode: "0755"
-    - path: "{{ mailman3_django_var_dir }}/emails"
-      owner: "{{ mailman3_web_user }}"
-      group: "{{ mailman3_web_group }}"
-      mode: "0755"
-    - path: "{{ mailman3_django_project_dir }}"
-      group: "{{ mailman3_web_group }}"
-      mode: "0755"
-    - path: "{{ mailman3_django_log_dir }}"
-      mode: "0755"
-      owner: "{{ mailman3_web_user }}"
-      group: "{{ mailman3_web_group }}"
+    - { path: "{{ mailman3_etc_dir }}",                                                           group: "{{ __mailman3_group_name }}", mode: "0775" }
+    - { path: "{{ mailman3_var_dir }}",                   owner: "{{ __mailman3_user_name }}",    group: "{{ __mailman3_group_name }}", mode: "0775" }
+    - { path: "{{ mailman3_log_dir }}",                   owner: "{{ __mailman3_user_name }}",    group: "{{ __mailman3_group_name }}", mode: "0775" }
+    - { path: "{{ mailman3_django_var_dir }}" }
+    - { path: "{{ mailman3_django_log_dir }}",            owner: "{{ mailman3_web_user }}",       group: "{{ mailman3_web_group }}",    mode: "0775" }
+    - { path: "{{ mailman3_django_project_dir }}",                                                group: "{{ mailman3_web_group }}",    mode: "0775" }
+    - { path: "{{ mailman3_django_var_dir }}/db",         owner: "{{ mailman3_web_user }}",       group: "{{ mailman3_web_group }}",    mode: "0775" }
+    - { path: "{{ mailman3_django_var_dir }}/emails",     owner: "{{ mailman3_web_user }}",       group: "{{ mailman3_web_group }}",    mode: "0775" }
+    - { path: "{{ mailman3_django_var_dir }}/fulltext_index", owner: "{{ mailman3_web_user }}",   group: "{{ mailman3_web_group }}",    mode: "0775" }
+    - { path: "{{ mailman3_django_log_dir }}",            owner: "{{ mailman3_web_user }}",       group: "{{ mailman3_web_group }}",    mode: "0775" }
+    - { path: "{{ mailman3_django_var_dir }}/run",        owner: "{{ mailman3_web_user }}",       group: "{{ mailman3_web_group }}",    mode: "0775" }
+    - { path: "{{ mailman3_django_static_dir }}",         owner: "{{ mailman3_web_user }}",       group: "{{ mailman3_web_group }}",    mode: "0775" }
   when: mailman3_process_manager == 'systemd' and mailman3_run_postorius
 
+- debug:
+    msg: "mailman3_run_hyperkitty is {{mailman3_run_hyperkitty}}"
+
+- debug:
+    msg: "__mailman3_django_config_merged is {{__mailman3_django_config_merged}}"
 
 - name: Create HyperKitty attachment directory
   file:

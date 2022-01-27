@@ -16,7 +16,6 @@ SITE_ID = {{ __mailman3_django_config_merged.site_id | default(1) }}
 # Hosts/domain names that are valid for this site; required if DEBUG is False
 # See https://docs.djangoproject.com/en/1.8/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = [
-    "localhost",  # Archiving API from Mailman, keep it.
 {% for host in __mailman3_django_config_merged.allowed_hosts |unique %}
     "{{ host }}",
 {% endfor %}
@@ -138,7 +137,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 # Django Allauth
 # You probably want https in production
-ACCOUNT_DEFAULT_HTTP_PROTOCOL = "{{ __mailman3_django_config_merged.default_http_protocol }}"
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = "{{ __mailman3_django_config_merged.webservice.protocol }}"
 
 SOCIALACCOUNT_PROVIDERS = {
 {% for key in __mailman3_django_config_merged.socialaccount_providers | sort %}
@@ -176,6 +175,7 @@ SOCIALACCOUNT_PROVIDERS = {
 # management command after each code upgrade.
 # http://django-compressor.readthedocs.io/en/latest/usage/#offline-compression
 COMPRESS_OFFLINE = {{ 'True' if __mailman3_django_config_merged.compress_offline | bool else 'False' }}
+COMPRESS_ROOT = "{{ mailman3_django_static_dir }}"
 
 # Needed for debug mode
 # INTERNAL_IPS = ('127.0.0.1',)
@@ -183,17 +183,26 @@ COMPRESS_OFFLINE = {{ 'True' if __mailman3_django_config_merged.compress_offline
 
 # Using the cache infrastructure can significantly improve performance on a
 # production setup. This is an example with a local Memcached server.
-#CACHES = {
-#    'default': {
-#        'BACKEND': 'django.core.cache.backends.memcached.PyLibMCCache',
-#        'LOCATION': '127.0.0.1:11211',
-#    }
-#}
+{% if __mailman3_django_config_merged.memcache_enabled %}
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.memcached.PyLibMCCache',
+        'LOCATION': '127.0.0.1:11211',
+    }
+}
+{% endif %}
 
 
 #
 # HyperKitty-specific
 #
+
+HAYSTACK_CONNECTIONS = {
+      'default': {
+      'ENGINE': 'haystack.backends.whoosh_backend.WhooshEngine',
+      'PATH': "/opt/mailman3/var/web/fulltext_index",
+      },
+}
 
 # Only display mailing-lists from the same virtual host as the webserver
 FILTER_VHOST = False
@@ -202,4 +211,4 @@ FILTER_VHOST = False
 HYPERKITTY_ATTACHMENT_FOLDER = '{{ __mailman3_django_config_merged.hyperkitty_attachment_folder }}'
 {% endif %}
 
-POSTORIUS_TEMPLATE_BASE_URL = 'http://localhost:8000'
+POSTORIUS_TEMPLATE_BASE_URL = '{{ mailman3_postorius_url }}'

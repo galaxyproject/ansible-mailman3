@@ -13,12 +13,11 @@
 
 
 - name: Create HyperKitty configuration file
-  copy:
-    content: |
-      [general]
-      base_url: http://localhost/{{ mailman3_hyperkitty_root }}
-      api_key: {{ mailman3_archiver_key }}
+  template:
+    src: "hyperkitty.cfg.j2"
     dest: "{{ mailman3_etc_dir }}/hyperkitty.cfg"
+    mode: "0644"
+    owner: "{{ __mailman3_user_name }}"
     group: "{{ __mailman3_group_name }}"
   when: mailman3_run_postorius and mailman3_run_hyperkitty
   notify:
@@ -29,6 +28,8 @@
   template:
     src: "{{ item.name }}.j2"
     mode: "{{ item.mode }}"
+    owner: "{{ __mailman3_user_name }}"
+    group: "{{ __mailman3_group_name }}"
     dest: "{{ mailman3_django_project_dir }}/{{ item.name }}"
     backup: "{{ mailman3_backup_configs }}"
   with_items:
@@ -60,6 +61,7 @@
   template:
     src: "settings_local.py.j2"
     dest: "{{ mailman3_django_settings_file }}"
+    owner: "{{ __mailman3_user_name }}"
     group: "{{ __mailman3_group_name }}"
     mode: "0640"
     backup: "{{ mailman3_backup_configs }}"
@@ -195,7 +197,6 @@
   when: __mailman3_pip and mailman3_domains is not defined and mailman3_run_postorius
   notify:
     - restart mailman3-web service
-
 
 - name: Create/update uWSGI domain configuration files
   template:

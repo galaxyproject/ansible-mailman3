@@ -39,24 +39,57 @@ mailman3_uwsgi_static: no
 
 # You should rarely need to set these
 #mailman3_virtualenv_python: python3
-#mailman3_virtualenv_command: python3 -m venv   # https://github.com/ansible/ansible/issues/52275
-mailman3_virtualenv_command: pyvenv
+#mailman3_virtualenv_command: python3 -m venv
+mailman3_virtualenv_command: virtualenv
+# As part of a pathname:
+mailman3_python_version: python3.8
 
 __mailman3_debian: "{{ ansible_os_family == 'Debian' }}"
 __mailman3_redhat: "{{ ansible_os_family == 'RedHat' }}"
 __mailman3_pip: "{{ mailman3_install_method == 'pip' }}"
 
 # pip needed packages if using the pip install method, system packages if using the package method
-__mailman3_pip_packages:
-  - whoosh
-  - django>=1.11,<3.0
+__mailman3_pip_packages_common:
+  - Django>=2,<3.1
   - mailman
+  - mailmanclient
   - six
-  - postorius
-  - hyperkitty
   - django-haystack
-  - mailman-hyperkitty
+  - django-gravatar2
   - "{{ mailman3_python_uwsgi_package }}"
+
+__mailman3_pip_db_packages_sqlite: []
+
+__mailman3_pip_hyperkitty_packages:
+  - HyperKitty
+  - mailman-hyperkitty
+  - whoosh
+
+__mailman3_pip_postorius_packages:
+  - mailman-web
+  - postorius
+
+__mailman3_pip_db_packages_mysql:
+  - pymysql
+  - mysqlclient>=2
+
+__mailman3_pip_db_packages_postgres:
+  - psycopg2-binary
+
+__mailman3_pip_db_packages: >-
+  {{
+    __mailman3_pip_db_packages_mysql if mailman3_core_db_type == 'mysql' else (
+    __mailman3_pip_db_packages_postgres if mailman3_core_db_type == 'postgres' else
+    __mailman3_pip_db_packages_sqlite)
+  }}
+
+__mailman3_pip_packages: >-
+  {{
+    __mailman3_pip_packages_common +
+    __mailman3_pip_db_packages +
+    (__mailman3_pip_postorius_packages if mailman3_run_postorius else []) +
+    (__mailman3_pip_hyperkitty_packages if mailman3_run_hyperkitty else [])
+  }}
 
 __mailman3_debian_packages:
   - mailman3-full
@@ -73,24 +106,37 @@ mailman3_packages: >-
 # for e.g. psycopg2
 mailman3_extra_packages: []
 
-# Dependant system packages needed if using the pip install method
-__mailman3_debian_system_dependency_packages:
-  - python3             # requires Ubuntu >= 16.04, Debian >= stretch (for 3.5)
+# Packages needed to install 'mysqlclient' pip package, when using mysql DB.
+__mailman3_debian_system_dependency_packages_mysql:
   - python3-dev
-  - python3-setuptools  # Ansible pip module needs this despite having venv; UPDATE: no it doesn't if it can find python3; UPDATE2: well now it does again, wtf
-  - python3-venv
+  - default-libmysqlclient-dev
+  - build-essential
+
+  # Dependant system packages needed if using the pip install method
+__mailman3_debian_system_dependency_packages_common:
+  - python3
+  - python3-dev
   - sassc
   - uwsgi
   - uwsgi-plugin-python3
+  - python3-setuptools
+#  - python3-venv
+
+__mailman3_debian_system_dependency_packages: >-
+  {{
+    __mailman3_debian_system_dependency_packages_common +
+    __mailman3_debian_system_dependency_packages_mysql if mailman3_core_db_type == 'mysql' else []
+  }}
 
 __mailman3_redhat_system_dependency_packages:
   # all require EPEL
-  - python36    # requires EL7+
+  - python38    # requires EL7+
   - sassc
   - uwsgi
   - uwsgi-plugin-python36
 
-# TODO: as of `date`, compilers + python headers are required for these packages that don't have published cext wheels:
+# TODO: compilers + python headers are required for these packages that don't have published cext
+# wheels:
 #   - rcssmin
 #   - rjsmin
 # But this role will not install compilers in case wheels become available at a later date
@@ -148,6 +194,13 @@ mailman3_django_var_dir: >-
         None)
     }}
 
+mailman3_django_packages_dir: >-
+    {{
+        '/var/opt/mailman3/lib/python3.6/site-packages' if __mailman3_pip else (
+        '/usr/lib/python3.6/site-packages' if __mailman3_debian else
+        None)
+    }}
+
 mailman3_django_project_dir: >-
     {{
         '/var/opt/mailman3/web/project' if __mailman3_pip else (
@@ -192,24 +245,106 @@ mailman3_web_group: >-
     }}
 
 mailman3_core_api_hostname: localhost
+mailman3_core_api_listen_address: "0.0.0.0"
 mailman3_core_api_port: 8001
 mailman3_core_api_admin_user: restadmin
 mailman3_core_api_admin_pass: restpass
 mailman3_archiver_key: SecretArchiverAPIKey
 mailman3_django_time_zone: Europe/London
+mailman3_postorius_listen_address: "0.0.0.0"
 mailman3_admin_email_domain: "{{ inventory_hostname }}"
 
+mailman3_core_db_host: ''
+mailman3_core_db_name: mailman
+mailman3_core_db_user: ''
+mailman3_core_db_password: ''
+mailman3_core_db_type: sqlite3    # sqlite3 | postgres | mysql
+
+mailman3_core_db_auth:  >-
+  {{
+    mailman3_core_db_user~":"~mailman3_core_db_password~"@" if mailman3_core_db_user and mailman3_core_db_password else (
+    mailman3_core_db_user~"@" if mailman3_core_db_user else
+    '')
+  }}
+
+mailman3_core_db_scheme: >-
+  {{
+    'mysql+pymysql' if  mailman3_core_db_type == 'mysql' else (
+    'postgres' if  mailman3_core_db_type == 'postgres' else
+    'sqlite')
+  }}
+
+mailman3_core_db_uri: >-
+  {{
+    "/mailman?charset=utf8mb4&use_unicode=1" if mailman3_core_db_type == 'mysql' else (
+    "/mailman" if mailman3_core_db_type == 'postgres' else
+    "/"~mailman3_var_dir~"/data/"~mailman3_core_db_name~".db")
+  }}
+
+mailman3_core_db_class: >-
+  {{
+    "mailman.database.mysql.MySQLDatabase" if  mailman3_core_db_type == 'mysql' else (
+    "mailman.database.postgresql.PostgreSQLDatabase" if  mailman3_core_db_type == 'postgres' else
+    "mailman.database.sqlite.SQLiteDatabase")
+  }}
+
+mailman3_core_db_url: "{{mailman3_core_db_scheme}}://{{ mailman3_core_db_auth }}{{ mailman3_core_db_host }}{{ mailman3_core_db_uri }}"
+
 __mailman3_config_default:
+  # General setup.
   mailman:
     layout: custom
+    site_owner: change.me@example.com
+    # These are the defaults, if you want to change them:
+    default_language: en
+    noreply_address: noreply
+    pending_request_life: 3d
+    cache_life: 7d
+    listname_chars: [-_.0-9a-z]
+    html_to_plain_text_command: /usr/bin/lynx -dump $filename
+
+  database:
+    class: "{{ mailman3_core_db_class }}"
+    url: "{{ mailman3_core_db_url }}"
+    #debug: No
+
+  # The runners poll for work, sleeping if it's not found. The following
+  # sleep times make the service less prone to busy-waiting.
+  runner.master:
+    sleep_time: 30s
+  runner.nntp:
+    sleep_time: 5m
+  runner.out:
+    sleep_time: 5s
+  runner.lmtp:
+    sleep_time: 5s
+  runner.in:
+    sleep_time: 5s
+  runner.bounces:
+    sleep_time: 1m
+  runner.command:
+    sleep_time: 10s
+  runner.archive:
+    sleep_time: 1m
+  runner.virgin:
+    sleep_time: 2m
+  runner.digest:
+    sleep_time: 2m
+  runner.pipeline:
+    sleep_time: 3s
+
+  # Mail Transfer Agent setup - incoming/outgoing messages.
   mta:
     configuration: python:mailman.config.exim4
     incoming: mailman.mta.exim4.LMTP
     outgoing: mailman.mta.deliver.deliver
     lmtp_host: localhost
-    smtp_host: localhost
     lmtp_port: 8024
+    smtp_host: localhost
     smtp_port: 25
+    max_recipients: 500
+
+  # Filesystem paths used when mailman.layout is 'custom'.
   paths.custom:
     var_dir: "{{ mailman3_var_dir }}"
     bin_dir: "$argv"
@@ -223,13 +358,19 @@ __mailman3_config_default:
     template_dir: "{{ mailman3_var_dir }}/templates"
     pid_file: "{{ mailman3_var_dir }}/master.pid"
     lock_file: "{{ mailman3_var_dir }}/master.lck"
+
+  # Network setup for the REST Api service
   webservice:
+    protocol: "http"
     hostname: "{{ mailman3_core_api_hostname }}"
-    port: "{{ mailman3_core_api_port }}"
+    listen:   "{{ mailman3_core_api_listen_address }}"
+    port:     "{{ mailman3_core_api_port }}"
     use_https: "no"
     admin_user: "{{ mailman3_core_api_admin_user }}"
     admin_pass: "{{ mailman3_core_api_admin_pass }}"
     api_version: "3.1"
+
+  # Archiver setup, currently only HyperKitty
   archiver.hyperkitty:
     class: mailman_hyperkitty.Archiver
     enable: "yes"
@@ -239,11 +380,16 @@ __mailman3_config_merged: "{{ __mailman3_config_default | combine(mailman3_confi
 
 __mailman3_django_config_default:
   admins: "{{ mailman3_django_superusers }}"
+  # Which domain names are valid HTTP hosts over uwsgi?
   allowed_hosts: "{{ mailman3_domains | default([inventory_hostname]) }}"
+
+  # Where to talk to the Core API?
   rest_api_url: "http://{{ mailman3_core_api_hostname }}:{{ mailman3_core_api_port }}"
   rest_api_user: "{{ mailman3_core_api_admin_user }}"
   rest_api_pass: "{{ mailman3_core_api_admin_pass }}"
   archiver_key: "{{ mailman3_archiver_key }}"
+
+  # The Django database.
   databases:
     default:
       ENGINE: django.db.backends.sqlite3
@@ -252,22 +398,44 @@ __mailman3_django_config_default:
       PASSWORD: ''
       HOST: ''
       PORT: ''
+
   secret_key: change.me
   secure_proxy_ssl_header: HTTP_X_FORWARDED_PROTO
-  default_http_protocol: https
+
+  # Postorius Web service external URL.
+  webservice:
+    protocol: https
+    hostname: "{{ mailman3_run_postorius_host }}"
+    port: 80
+    listen: "{{ mailman3_postorius_listen_address }}"
+
   install_admin_app: no
   default_from_email: "postorius@{{ mailman3_admin_email_domain }}"
   server_email: "root@{{ mailman3_admin_email_domain }}"
   compress_offline: true
   # Disable by default, recommended Django setup for nginx passes Host, not X-Forwarded-Host
   use_x_forwarded_host: false
-  socialaccount_providers: {}
   time_zone: "{{ mailman3_django_time_zone }}"
+  memcache_enabled: no
+
+  # The names of Django allauth.socialaccount.providers 'apps'.
+  socialaccount_providers: {}
 
 __mailman3_django_config_merged: "{{ __mailman3_django_config_default | combine(mailman3_django_config | default({}), recursive=True) }}"
 
+mailman3_core_api_root: ''
+mailman3_core_api_socket: '{{ __mailman3_config_merged.webservice.hostname }}:{{ __mailman3_config_merged.webservice.port }}'
+mailman3_core_api_url: '{{ __mailman3_config_merged.webservice.protocol }}://{{ mailman3_core_api_socket }}/{{ mailman3_core_api_root }}'
+
 mailman3_postorius_root: 'postorius/'
+mailman3_postorius_listen: '{{ __mailman3_django_config_merged.webservice.listen }}:{{ __mailman3_django_config_merged.webservice.port }}'
+mailman3_postorius_socket: '{{ __mailman3_django_config_merged.webservice.hostname }}:{{ __mailman3_django_config_merged.webservice.port }}'
+mailman3_postorius_url: '{{ __mailman3_django_config_merged.webservice.protocol }}://{{ mailman3_postorius_socket }}/{{ mailman3_postorius_root }}'
+
 mailman3_hyperkitty_root: 'hyperkitty/'
+mailman3_hyperkitty_listen: '{{ __mailman3_django_config_merged.webservice.listen }}:{{ __mailman3_django_config_merged.webservice.port }}'
+mailman3_hyperkitty_socket: '{{ __mailman3_django_config_merged.webservice.hostname }}:{{ __mailman3_django_config_merged.webservice.port }}'
+mailman3_hyperkitty_url: '{{ __mailman3_django_config_merged.webservice.protocol }}://{{ mailman3_hyperkitty_socket }}/{{ mailman3_hyperkitty_root }}'
 
 #mailman3_user: mailman
 mailman3_create_user: "{{ __mailman3_pip and not __mailman3_debian }}"

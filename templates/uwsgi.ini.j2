@@ -1,17 +1,17 @@
 {% macro getsock(sock) -%}
-    {%- if domain is defined -%}
-        {%- if ':' in sock -%}
-{#          BUG: there is no 'site_id' defined at this point. #}
-{#            {% set host, port = sock.rsplit(':', 1) -%}#}
-{#            {{ [host, (port | int) + site_id - 1] | join(':') }}#}
-            {{- sock -}}
-        {%- else -%}
-            {% set path, ext = sock | splitext -%}
-            {{- [path, '_' ~ domain, ext] | join('') -}}
-        {% endif -%}
+  {%- if domain is defined -%}
+    {%- if ':' in sock -%}
+      {%- set host, port = sock.rsplit(':', 1) -%}
+      {# there might be no 'site_id' defined at this point. #}
+      {%- set sid = site_id > 0 | ternary(site_id - 1, 0) -%}
+      {{- [host, (port | int) + sid] | join(':') -}}
     {%- else -%}
-        {{- sock -}}
+      {% set path, ext = sock | splitext -%}
+      {{- [path, '_' ~ domain, ext] | join('') -}}
     {% endif -%}
+  {%- else -%}
+    {{- sock -}}
+  {%- endif -%}
 {% endmacro -%}
 
 [uwsgi]
@@ -22,14 +22,15 @@ env = DJANGO_SETTINGS_MODULE=settings{{ '_' ~ domain | replace('.', '_') | repla
 
 # Port on which uwsgi will be listening.
 uwsgi-socket = {{ getsock(mailman3_uwsgi_socket) }}
-{% if mailman3_http_socket is defined %}
-http-socket = {{ getsock(mailman3_http_socket) }}
+{% if mailman3_postorius_listen is defined %}
+# {{ mailman3_postorius_listen }} | {{ site_id }}
+http-socket = {{ getsock(mailman3_postorius_listen) }}
 {% endif %}
 
 # Enable threading for python
 enable-threads = true
 
-# Move to the directory wher the django files are.
+# Move to the directory where the django files are.
 chdir = {{ mailman3_django_project_dir }}
 
 # Use the wsgi file provided with the django project.

@@ -15,8 +15,8 @@ KillSignal=SIGQUIT
 Type=notify
 StandardError=syslog
 NotifyAccess=all
-User=root
-Group=root
+User={{ mailman3_web_user }}
+Group={{ mailman3_web_group }}
 
 [Install]
 WantedBy=multi-user.target

@@ -1,6 +1,6 @@
 [Unit]
 Description=Mailman 3 Core service
-After=network.target
+After=network-online.target
 Documentation=https://mailman.readthedocs.io/
 ConditionPathExists={{ mailman3_etc_dir }}/mailman.cfg
 
@@ -13,5 +13,8 @@ PIDFile={{ __mailman3_config_merged['paths.' ~ __mailman3_config_merged.mailman.
 SyslogIdentifier=mailman3
 User={{ __mailman3_user_name }}
 Group={{ __mailman3_group_name }}
+TimeoutStartSec=10s
+TimeoutStopSec=10s
 
 [Install]
+WantedBy=multi-user.target

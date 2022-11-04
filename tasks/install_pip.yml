@@ -1,98 +1,159 @@
 ---
 
 - name: Install system dependencies
-  package:
+  ansible.builtin.package:
     name: "{{ mailman3_system_dependency_packages }}"
   when: mailman3_install_system_dependencies
 
 # This is a separate task from the next one because `python3 -m venv` doesn't install wheel and pip needs it to build
 # wheels (not strictly required, but preferred) and won't load it mid-invocation if installed during the next task
 - name: Create Mailman venv
-  pip:
+  ansible.builtin.pip:
     name: wheel
+    state: "{{ 'latest' if mailman3_upgrade else omit }}"
     virtualenv: "{{ mailman3_install_dir }}"
     virtualenv_python: "{{ mailman3_virtualenv_python | default(omit) }}"
     virtualenv_command: "{{ mailman3_virtualenv_command | default(omit) }}"
 
 - name: Install Mailman and Python dependencies
-  pip:
-    name: "{{ mailman3_packages + mailman3_extra_packages }}"
+  ansible.builtin.pip:
+    name: "{{ mailman3_pip_packages }}"
+    state: "{{ 'latest' if mailman3_upgrade else omit }}"
     virtualenv: "{{ mailman3_install_dir }}"
 
 - name: Create configuration, data, and state directories
-  file:
+  ansible.builtin.file:
     path: "{{ item.path }}"
     owner: "{{ item.owner | default(omit) }}"
     group: "{{ item.group | default(omit) }}"
     mode: "{{ item.mode | default(omit) }}"
     state: directory
-  with_items:
-    - path: "{{ mailman3_etc_dir }}"
-      group: "{{ __mailman3_group_name }}"
+  when: item.when | default(true)
+  loop:
+    # Ensure the parents, if they do not exist, are not created with the list user as the owner
+    - path: "{{ mailman3_core_var_dir | dirname }}"
+      mode: "0755"
+    - path: "{{ mailman3_web_var_dir | dirname }}"
+      mode: "0755"
+    - path: "{{ mailman3_core_etc_dir }}"
+      mode: "0755"
+    - path: "{{ mailman3_core_var_dir }}"
+      owner: "{{ __mailman3_core_user_name }}"
+      group: "{{ __mailman3_core_group_name }}"
+      mode: "0755"
+    - path: "{{ mailman3_core_log_dir }}"
+      owner: "{{ __mailman3_core_user_name }}"
+      group: "{{ __mailman3_core_group_name }}"
+      mode: "0755"
+    - path: "{{ mailman3_web_var_dir }}"
+      owner: "{{ __mailman3_web_user_name }}"
+      group: "{{ __mailman3_web_group_name }}"
+      mode: "0755"
+    - path: "{{ mailman3_web_var_dir }}/db"
+      owner: "{{ __mailman3_web_user_name }}"
+      group: "{{ __mailman3_web_group_name }}"
       mode: "0750"
-    # Creates the parent /var/opt/mailman3 with default permissions
-    - path: "{{ mailman3_var_dir | dirname }}"
-    - path: "{{ mailman3_var_dir }}"
-      owner: "{{ __mailman3_user_name }}"
-      group: "{{ __mailman3_group_name }}"
+    - path: "{{ mailman3_web_var_dir }}/fulltext_index"
+      owner: "{{ __mailman3_web_user_name }}"
+      group: "{{ __mailman3_web_group_name }}"
       mode: "0750"
-    - path: "{{ mailman3_log_dir }}"
-      owner: "{{ __mailman3_user_name }}"
-      group: "{{ __mailman3_group_name }}"
-      mode: "0750"
-    - path: "{{ mailman3_django_var_dir }}"
-    - path: "{{ mailman3_django_var_dir }}/run"
-      owner: "{{ mailman3_web_user }}"
-      group: "{{ mailman3_web_group }}"
-      mode: "0750"
-    - path: "{{ mailman3_django_var_dir }}/db"
-      owner: "{{ mailman3_web_user }}"
-      group: "{{ mailman3_web_group }}"
-      mode: "0750"
-    - path: "{{ mailman3_django_var_dir }}/fulltext_index"
-      owner: "{{ mailman3_web_user }}"
-      group: "{{ mailman3_web_group }}"
-      mode: "0750"
-    - path: "{{ mailman3_django_var_dir }}/emails"
-      owner: "{{ mailman3_web_user }}"
-      group: "{{ mailman3_web_group }}"
+    - path: "{{ mailman3_web_var_dir }}/emails"
+      owner: "{{ __mailman3_web_user_name }}"
+      group: "{{ __mailman3_web_group_name }}"
       mode: "0750"
     - path: "{{ mailman3_django_project_dir }}"
-      group: "{{ mailman3_web_group }}"
+      group: "{{ __mailman3_web_group_name }}"
       mode: "0750"
-    - path: "{{ mailman3_django_log_dir }}"
-      mode: "0750"
-      owner: "{{ mailman3_web_user }}"
-      group: "{{ mailman3_web_group }}"
+    - path: "{{ (mailman3_django_log_dir | default('/')) | dirname }}"
+      owner: "{{ __mailman3_web_user_name }}"
+      group: "{{ __mailman3_web_group_name }}"
+      mode: "0755"
+      when: "{{ mailman3_django_log_dir is defined }}"
 
 - name: Create HyperKitty attachment directory
-  file:
+  ansible.builtin.file:
     path: "{{ __mailman3_django_config_merged.hyperkitty_attachment_folder }}"
-    owner: "{{ mailman3_web_user }}"
-    group: "{{ mailman3_web_group }}"
+    owner: "{{ __mailman3_web_user_name }}"
+    group: "{{ __mailman3_web_group_name }}"
     mode: "0750"
     state: directory
   when: __mailman3_django_config_merged.hyperkitty_attachment_folder is defined
 
-# TODO: This is needed to read settings_local.py from /etc/opt/mailman3, but will it be needed for anything else?
-# TODO: config option to control this?
-- name: Add web user to Mailman user group
-  user:
-    name: "{{ mailman3_web_user }}"
-    groups: "{{ __mailman3_group_name }}"
-
 - name: Install systemd service unit files
-  template:
-    src: "{{ item.src | default(item) }}.j2"
-    dest: /etc/systemd/system/{{ item.dest | default(item) }}
+  ansible.builtin.template:
+    src: "{{ item.src }}.j2"
+    dest: /etc/systemd/system/{{ item.dest }}
   loop:
-    - mailman3-core.service
+    - src: mailman3-core.service
+      dest: "{{ mailman3_core_service_name }}.service"
     - src: mailman3-web.service
-      dest: mailman3-web{{ '@' if mailman3_domains is defined else '' }}.service
+      dest: "{{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}.service"
   loop_control:
-    label: "{{ item.dest | default(item) }}"
+    label: "{{ item.dest }}"
   when: mailman3_process_manager == 'systemd'
   notify:
     - reload systemd manager configuration
+    # TODO: split tasks to only restart the affected service
+    - restart mailman3-core service
+    - restart mailman3-web service
+
+- name: Install systemd socket unit file
+  ansible.builtin.template:
+    src: mailman3-web.socket.j2
+    dest: "/etc/systemd/system/{{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}.socket"
+  when: mailman3_process_manager == 'systemd'
+  notify:
+    - reload systemd manager configuration
+    - restart mailman3-core service
+    - restart mailman3-web service
 
 # TODO: remove the non-instance service unit file if mailman3_domains is defined, remove the instance service unit file
+
+- name: Create Django settings file
+  ansible.builtin.template:
+    src: settings.py.j2
+    dest: "{{ mailman3_django_project_dir }}/settings.py"
+    mode: "0640"
+    owner: root
+    group: "{{ __mailman3_web_group_name }}"
+    backup: "{{ mailman3_backup_configs }}"
+  #when: mailman3_domains is not defined
+  notify:
+    - reload mailman3-web service
+
+- name: Create per-domain Django settings files
+  ansible.builtin.template:
+    src: settings_domain.py.j2
+    dest: "{{ mailman3_django_project_dir }}/settings_{{ mailman3_domain | replace('.', '_') }}.py"
+    mode: "0640"
+    owner: root
+    group: "{{ __mailman3_web_group_name }}"
+    backup: "{{ mailman3_backup_configs }}"
+  loop: "{{ mailman3_domains | default([]) }}"
+  loop_control:
+    extended: true
+    loop_var: mailman3_domain
+  when: mailman3_domains is defined
+  notify:
+    - reload mailman3-web service
+
+- name: Create gunicorn config file
+  ansible.builtin.template:
+    src: gunicorn_config.py.j2
+    dest: "{{ mailman3_core_etc_dir }}/gunicorn_config.py"
+    mode: "0644"
+    owner: root
+    backup: "{{ mailman3_backup_configs }}"
+  when: mailman3_python_wsgi_package == "gunicorn"
+  notify:
+    - restart mailman3-web service
+
+# community.general.django_manage hardcodes `<project_dir>/manage.py`, so we make a fake manage.py that calls
+# django-admin
+- name: Create fake manage.py for community.general.django_manage
+  copy:
+    content: |
+      #!/usr/bin/env sh
+      exec django-admin "$@"
+    dest: "{{ mailman3_django_project_dir }}/manage.py"
+    mode: "0755"

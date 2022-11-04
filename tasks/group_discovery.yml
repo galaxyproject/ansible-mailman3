@@ -1,15 +1,15 @@
 ---
 
-- name: Get Mailman user group ID
-  getent:
+- name: Get Mailman Core user group ID
+  ansible.builtin.getent:
     database: passwd
-    key: "{{ __mailman3_user_name }}"
+    key: "{{ __mailman3_core_user_name }}"
 
-- name: Get Mailman user group name
-  getent:
+- name: Get Mailman Core user group name
+  ansible.builtin.getent:
     database: group
-    key: "{{ getent_passwd[__mailman3_user_name][2] }}"
+    key: "{{ getent_passwd[__mailman3_core_user_name][2] }}"
 
-- name: Set Mailman user group fact
-  set_fact:
-    __mailman3_group_name: "{{ getent_group | first }}"
+- name: Set Mailman user group facts
+  ansible.builtin.set_fact:
+    __mailman3_core_group_name: "{{ getent_group | first }}"

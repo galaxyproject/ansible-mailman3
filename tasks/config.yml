@@ -1,194 +1,34 @@
 ---
 
 - name: Create/update Mailman Core configuration
-  template:
+  ansible.builtin.template:
     src: mailman.cfg.j2
-    dest: "{{ mailman3_etc_dir }}/mailman.cfg"
-    group: "{{ __mailman3_group_name }}"
+    dest: "{{ mailman3_core_etc_dir }}/mailman.cfg"
+    group: "{{ __mailman3_core_group_name }}"
     mode: "0640"
     backup: "{{ mailman3_backup_configs }}"
   notify:
     - restart mailman3-core service
 
 - name: Create HyperKitty configuration file
-  copy:
+  ansible.builtin.copy:
     content: |
       [general]
-      base_url: http://localhost/{{ mailman3_hyperkitty_root }}
+      base_url: http://localhost/{{ mailman3_hyperkitty_root | default('hyperkitty/') }}
       api_key: {{ mailman3_archiver_key }}
-    dest: "{{ mailman3_etc_dir }}/hyperkitty.cfg"
-    group: "{{ __mailman3_group_name }}"
-  notify:
-    - restart mailman3-core service
-
-- name: Create/update Django project
-  template:
-    src: "{{ item.name }}.j2"
-    mode: "{{ item.mode }}"
-    dest: "{{ mailman3_django_project_dir }}/{{ item.name }}"
-    backup: "{{ mailman3_backup_configs }}"
-  with_items:
-    - name: manage.py
-      mode: "0755"
-    - name: settings.py
-      mode: "0644"
-    - name: urls.py
-      mode: "0644"
-    - name: wsgi.py
-      mode: "0644"
-  when: __mailman3_pip
-  notify:
-    - restart mailman3-web service
-
-- name: Create/update Django local settings
-  template:
-    src: "settings_local.py.j2"
-    dest: "{{ mailman3_django_settings_file }}"
-    group: "{{ __mailman3_group_name }}"
+    dest: "{{ mailman3_core_etc_dir }}/hyperkitty.cfg"
+    group: "{{ __mailman3_core_group_name }}"
     mode: "0640"
     backup: "{{ mailman3_backup_configs }}"
   notify:
-    - restart mailman3-web service
+    - restart mailman3-core service
 
-- name: Create Django local settings symlink
-  file:
-    src: "{{ mailman3_django_settings_file }}"
-    dest: "{{ mailman3_django_project_dir }}/settings_local.py"
-    state: link
-  when: __mailman3_pip
+- name: Install custom urls.py
+  ansible.builtin.template:
+    src: "urls.py.j2"
+    mode: "0644"
+    dest: "{{ mailman3_django_project_dir }}/{{ mailman3_django_urls_module_name }}.py"
+    backup: "{{ mailman3_backup_configs }}"
+  when: mailman3_django_urls_module_name
   notify:
-    - restart mailman3-web service
-
-- name: Create Django site configs
-  copy:
-    content: |
-      # import project settings first
-      from settings import *
-      # override any configured SITE_ID
-      SITE_ID = {{ site_id + 1 }}
-      FILTER_VHOST = True
-      DEFAULT_FROM_EMAIL = '{{ mailman3_default_from_user }}@{{ domain }}'
-    dest: "{{ mailman3_django_project_dir }}/settings_{{ domain | replace('.', '_') | replace('-', '_') }}.py"
-  loop: "{{ mailman3_domains | default([]) }}"
-  loop_control:
-    index_var: site_id
-    loop_var: domain
-  when: mailman3_domains is defined
-  notify:
-    - restart mailman3-web service
-
-# This runs before collectstatic because it creates the log file, which must be created as the web user
-- name: Create/update Django DB schema
-  django_manage:
-    command: migrate
-    app_path: "{{ mailman3_django_project_dir }}"
-    virtualenv: "{{ mailman3_install_dir }}"
-  # FIXME:
-  become: yes
-  become_user: "{{ mailman3_web_user }}"
-  #become_method: su
-  #become_flags: '-s /bin/sh'
-  notify:
-    - restart mailman3-web service
-
-- name: Collect Django static files
-  django_manage:
-    command: collectstatic
-    app_path: "{{ mailman3_django_project_dir }}"
-    virtualenv: "{{ mailman3_install_dir }}"
-  when: __mailman3_pip
-
-- name: Check Django superusers
-  django_manage:
-    command: >-
-      shell -c 'import sys;
-      from django.contrib.auth.models import User;
-      sys.stdout.write("exists") if User.objects.filter(username="{{ item.name }}").count() > 0 else sys.stdout.write("missing")'
-    app_path: "{{ mailman3_django_project_dir }}"
-    virtualenv: "{{ mailman3_install_dir }}"
-  with_items: "{{ mailman3_django_superusers }}"
-  register: __mailman3_checksuperuser_result
-  changed_when: __mailman3_checksuperuser_result.out == "missing"
-  loop_control:
-    label: "{{ item.name }}"
-  # FIXME:
-  become: yes
-  become_user: "{{ mailman3_web_user }}"
-
-- name: Create Django superusers
-  django_manage:
-    command: >-
-      shell -c 'import sys;
-      from django.contrib.auth.models import User;
-      User.objects.create_superuser("{{ item.item.name }}", "{{ item.item.email }}", "{{ item.item.pass }}")'
-    #command: "createsuperuser --noinput --username={{ item.item.name }} --email={{ item.item.email }}"
-    app_path: "{{ mailman3_django_project_dir }}"
-    virtualenv: "{{ mailman3_install_dir }}"
-  when: item is changed
-  with_items: "{{ __mailman3_checksuperuser_result.results }}"
-  register: __mailman3_createsuperuser_result
-  changed_when: true
-  loop_control:
-    label: "{{ item.item.name }}"
-  # FIXME:
-  become: yes
-  become_user: "{{ mailman3_web_user }}"
-
-- name: Check Django sites
-  django_manage:
-    command: >-
-      shell -c 'import sys;
-      from django.contrib.sites.models import Site;
-      sys.stdout.write("exists") if Site.objects.filter(domain="example.com").count() > 0 else sys.stdout.write("missing")'
-    app_path: "{{ mailman3_django_project_dir }}"
-    virtualenv: "{{ mailman3_install_dir }}"
-  register: __mailman3_checkexamplesite_result
-  changed_when: __mailman3_checkexamplesite_result.out == "exists"
-  # FIXME:
-  become: yes
-  become_user: "{{ mailman3_web_user }}"
-
-- name: Correct default Django site
-  django_manage:
-    command: >-
-      shell -c 'from django.contrib.sites.models import Site;
-      Site.objects.filter(domain="example.com").update(
-      domain="{{ (mailman3_domains | default([])).0 | default(inventory_hostname) }}",
-      name="{{ (mailman3_domains | default([])).0 | default(inventory_hostname) }}"
-      )'
-    app_path: "{{ mailman3_django_project_dir }}"
-    virtualenv: "{{ mailman3_install_dir }}"
-  when: __mailman3_checkexamplesite_result is changed
-  changed_when: true
-  # FIXME:
-  become: yes
-  become_user: "{{ mailman3_web_user }}"
-
-# TODO: create additional domains (for right now the admin can do this in the UI)
-
-- name: Create/update uWSGI configuration file
-  template:
-    src: uwsgi.ini.j2
-    dest: "{{ mailman3_etc_dir }}/uwsgi.ini"
-  when: __mailman3_pip and mailman3_domains is not defined
-  notify:
-    - restart mailman3-web service
-
-- name: Create/update uWSGI domain configuration files
-  template:
-    src: uwsgi.ini.j2
-    dest: "{{ mailman3_etc_dir }}/uwsgi_{{ domain }}.ini"
-  loop: "{{ mailman3_domains | default([]) }}"
-  loop_control:
-    index_var: site_id
-    loop_var: domain
-  when: mailman3_domains is defined
-  notify:
-    - restart mailman3-web service
-
-# This is idempotent so it's safe to do as an always-run task
-- name: Compress CSS
-  django_manage:
-    app_path: "{{ mailman3_django_project_dir }}"
-    command: compress
-    virtualenv: "{{ mailman3_install_dir }}"
+    - reload mailman3-web service

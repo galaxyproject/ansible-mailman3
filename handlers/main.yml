@@ -4,15 +4,24 @@
   systemd:
     daemon_reload: yes
 
+# invoke systemctl directly until someone implements https://github.com/ansible/ansible/issues/61763
+
 - name: restart mailman3-core service
-  service:
-    name: "{{ mailman3_core_service_name }}"
-    state: restarted
-  when: ansible_virtualization_type != "docker"
+  ansible.builtin.command: systemctl try-restart {{ mailman3_core_service_name }}.service
+  when:
+    - mailman3_process_manager == "systemd"
+    - ansible_virtualization_type != "docker"
 
 - name: restart mailman3-web service
-  service:
-    name: "{{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}{{ item }}"
-    state: restarted
+  ansible.builtin.command: systemctl try-restart {{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}{{ item }}.service
   loop: "{{ mailman3_domains | default(['']) }}"
-  when: ansible_virtualization_type != "docker"
+  when:
+    - mailman3_process_manager == "systemd"
+    - ansible_virtualization_type != "docker"
+
+- name: reload mailman3-web service
+  ansible.builtin.command: systemctl try-reload-or-restart {{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}{{ item }}.service
+  loop: "{{ mailman3_domains | default(['']) }}"
+  when:
+    - mailman3_process_manager == "systemd"
+    - ansible_virtualization_type != "docker"

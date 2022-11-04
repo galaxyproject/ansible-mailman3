@@ -1,20 +1,22 @@
 ---
 
-- name: Create mailman3 group
-  group:
-    name: "{{ (mailman3_user | default({})).group }}"
-    gid: "{{ (mailman3_user | default({})).gid | default(omit) }}"
-    system: "{{ (mailman3_user | default({})).system | default('yes') }}"
-  when: (mailman3_user | default({})).group is defined
+- name: Create Mailman group
+  ansible.builtin.group:
+    name: "{{ _mailman3_user.group }}"
+    gid: "{{ _mailman3_user.gid | default(omit) }}"
+    system: "{{ _mailman3_user.system | default(omit) }}"
+    local: "{{ _mailman3_user.local | default(omit) }}"
+  when: _mailman3_user.group is defined
 
-- name: Create mailman3 user
-  user:
-    name: "{{ __mailman_user_name }}"
-    comment: "{{ (mailman3_user | default({})).comment | default(omit) }}"
-    uid: "{{ (mailman3_user | default({})).uid | default(omit) }}"
-    group: "{{ (mailman3_user | default({})).group | default(omit) }}"
-    groups: "{{ (mailman3_user | default({})).groups | default(omit) }}"
-    home: "{{ (mailman3_user | default({})).home | default(mailman3_var_dir) }}"
-    create_home: "{{ (mailman3_user | default({})).create_home | default('no') }}"
-    shell: "{{ (mailman3_user | default({})).shell | default(omit) }}"
-    system: "{{ (mailman3_user | default({})).system | default('yes') }}"
+- name: Create Mailman user
+  ansible.builtin.user:
+    name: "{{ _mailman3_user.name }}"
+    comment: "{{ _mailman3_user.comment | default(omit) }}"
+    uid: "{{ _mailman3_user.uid | default(omit) }}"
+    group: "{{ _mailman3_user.group | default(omit) }}"
+    groups: "{{ _mailman3_user.groups | default(omit) }}"
+    home: "{{ _mailman3_user.home | default(omit) }}"
+    create_home: "{{ _mailman3_user.create_home | default(omit) }}"
+    shell: "{{ _mailman3_user.shell | default(omit) }}"
+    system: "{{ _mailman3_user.system | default(omit) }}"
+    local: "{{ _mailman3_user.local | default(omit) }}"

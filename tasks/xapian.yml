@@ -1,0 +1,19 @@
+---
+
+- name: Install system Python 3 xapian bindings
+  ansible.builtin.apt:
+    name: python3-xapian
+
+- name: Collect Mailman Python lib path
+  ansible.builtin.find:
+    paths: "{{ mailman3_install_dir }}/lib"
+    patterns: "python3.?"
+    file_type: directory
+    recurse: false
+  register: __mailman3_python_lib_dir
+
+- name: Create symlink for Python xapian bindings
+  ansible.builtin.file:
+    src: /usr/lib/python3/dist-packages/xapian
+    dest: "{{ __mailman3_python_lib_dir.files[0].path }}/site-packages/xapian"
+    state: link

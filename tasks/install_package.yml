@@ -1,35 +1,23 @@
 ---
 
 - name: Ensure supported OS for package installs
-  assert:
+  ansible.builtin.assert:
     that:
-      - "ansible_os_family == 'Debian'"
-    success_msg: "OS is supported for Mailman 3 installation by package"
-    fail_msg: "OS is not supported for Mailman 3 installation by package, set `mailman3_install_method` to `pip`"
-
-# TODO: everything below untested with Mailman 3
-- name: Install debconf packages
-  apt:
-    name:
-      - debconf
-      - debconf-utils
-  when: ansible_os_family == "Debian"
-
-- name: Set client options in debconf
-  debconf:
-    name: mailman3
-    question: "{{ item.question }}"
-    value: "{{ item.value }}"
-    vtype: "{{ item.vtype }}"
-  when: ansible_os_family == "Debian"
-  with_items:
-      - question: "mailman/site_languages"
-        value: "{{ mailman3_language }}"
-        type: "multiselect"
-      - question: "mailman/default_server_language"
-        value: "{{ mailman3_language }}"
-        vtype: "multiselect"
+      - "ansible_distribution == 'Debian'"
+      - "mailman3_domains is not defined"
+    success_msg: "OS and configuration are supported for Mailman 3 installation by package"
+    fail_msg: "OS and configuration are not supported for Mailman 3 installation by package, set `mailman3_install_method` to `pip`"
 
 - name: Install Mailman and dependency packages
-  package:
+  ansible.builtin.package:
     name: "{{ mailman3_packages }}"
+
+- name: Create/update Django local settings
+  template:
+    src: "settings_local.py.j2"
+    dest: /etc/mailman3/mailman-web.py
+    group: "{{ __mailman3_web_group_name }}"
+    mode: "0640"
+    backup: "{{ mailman3_backup_configs }}"
+  notify:
+    - restart mailman3-web service

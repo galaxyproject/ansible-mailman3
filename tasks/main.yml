@@ -1,37 +1,54 @@
 ---
 
-- name: Include user creation tasks
-  include_tasks: user.yml
-  when: mailman3_create_user
+- name: Include core user creation tasks
+  ansible.builtin.include_tasks: user.yml
+  when: mailman3_create_core_user
+  vars:
+    _mailman3_user: "{{ mailman3_core_user }}"
+
+- name: Include web user creation tasks
+  ansible.builtin.include_tasks: user.yml
+  when: mailman3_create_web_user
+  vars:
+    _mailman3_user: "{{ mailman3_web_user }}"
 
 - name: Include group discovery tasks
-  import_tasks: group_discovery.yml
+  ansible.builtin.import_tasks: group_discovery.yml
 
 - name: Include installation tasks
-  import_tasks: "install_{{ mailman3_install_method }}.yml"
+  ansible.builtin.import_tasks: "install_{{ mailman3_install_method }}.yml"
+
+- name: Include Xapian installation tasks
+  ansible.builtin.include_tasks: xapian.yml
+  when:
+    - __mailman3_django_config_merged.haystack_engine | default(none) == "xapian_backend.XapianEngine"
+    - ansible_os_family == "Debian"
 
 - name: Include configuration tasks
-  import_tasks: config.yml
+  ansible.builtin.import_tasks: config.yml
 
-- name: Include Postfix map distribution tasks
-  include_tasks: distribute_maps.yml
-  when: mailman3_distribute_maps is defined
+- name: Include Django management tasks
+  ansible.builtin.import_tasks: django.yml
+
+#- name: Include Postfix map distribution tasks
+#  ansible.builtin.include_tasks: distribute_maps.yml
+#  when: mailman3_distribute_maps is defined
 
 # Perform whatever restarts are needed now, prevents double restart on first run
 - name: Flush handlers
   meta: flush_handlers
 
 - name: Ensure Mailman Core is enabled and running
-  service:
+  ansible.builtin.service:
     name: "{{ mailman3_core_service_name }}"
-    enabled: yes
+    enabled: true
     state: started
   when: mailman3_process_manager != "supervisor"
 
 - name: Ensure Mailman Web is enabled and running
-  service:
-    name: "{{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}{{ item }}"
-    enabled: yes
+  ansible.builtin.service:
+    name: "{{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}{{ item }}.socket"
+    enabled: true
     state: started
   loop: "{{ mailman3_domains | default(['']) }}"
   when: mailman3_process_manager != "supervisor"

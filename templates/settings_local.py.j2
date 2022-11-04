@@ -60,7 +60,7 @@ INSTALLED_APPS = (
     'allauth.account',
     'allauth.socialaccount',
     #'django_mailman3.lib.auth.fedora',
-{% for provider in __mailman3_django_config_merged.socialaccount_providers | sort %}
+{% for provider in __mailman3_django_config_merged.socialaccount_providers | default({}) | sort %}
     'allauth.socialaccount.providers.{{ provider }}',
 {% endfor %}
 )
@@ -82,7 +82,9 @@ DATABASES = {
 
 # If you're behind a proxy, use the X-Forwarded-Host header
 # See https://docs.djangoproject.com/en/1.8/ref/settings/#use-x-forwarded-host
+{% if __mailman3_django_config_merged.use_x_forwarded_host is defined %}
 USE_X_FORWARDED_HOST = {{ 'True' if __mailman3_django_config_merged.use_x_forwarded_host | bool else 'False' }}
+{% endif %}
 
 # And if your proxy does your SSL encoding for you, set SECURE_PROXY_SSL_HEADER
 # https://docs.djangoproject.com/en/1.8/ref/settings/#secure-proxy-ssl-header
@@ -106,7 +108,7 @@ SECURE_PROXY_SSL_HEADER = ('{{ __mailman3_django_config_merged.secure_proxy_ssl_
 # Internationalization
 # https://docs.djangoproject.com/en/1.8/topics/i18n/
 
-LANGUAGE_CODE = '{{ mailman3_language_code }}'
+LANGUAGE_CODE = '{{ __mailman3_django_config_merged.language_code }}'
 
 TIME_ZONE = '{{ __mailman3_django_config_merged.time_zone | default("UTC") }}'
 

@@ -8,7 +8,7 @@
     mode: "0640"
     backup: "{{ mailman3_backup_configs }}"
   notify:
-    - restart mailman3-core service
+    - Restart mailman3-core service
 
 - name: Create HyperKitty configuration file
   ansible.builtin.copy:
@@ -21,7 +21,7 @@
     mode: "0640"
     backup: "{{ mailman3_backup_configs }}"
   notify:
-    - restart mailman3-core service
+    - Restart mailman3-core service
 
 - name: Install custom urls.py
   ansible.builtin.template:
@@ -31,4 +31,4 @@
     backup: "{{ mailman3_backup_configs }}"
   when: mailman3_django_urls_module_name
   notify:
-    - reload mailman3-web service
+    - Reload mailman3-web service

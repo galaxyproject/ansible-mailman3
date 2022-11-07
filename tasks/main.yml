@@ -36,7 +36,7 @@
 
 # Perform whatever restarts are needed now, prevents double restart on first run
 - name: Flush handlers
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers
 
 - name: Ensure Mailman Core is enabled and running
   ansible.builtin.service:

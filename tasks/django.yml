@@ -8,7 +8,7 @@
     pythonpath: "{{ mailman3_django_project_dir }}"
     project_path: "{{ mailman3_django_project_dir }}"
     virtualenv: "{{ mailman3_install_dir }}"
-  become: yes
+  become: true
   become_user: "{{ __mailman3_web_user_name }}"
   notify:
     - reload mailman3-web service
@@ -37,16 +37,15 @@
   changed_when: __mailman3_checksuperuser_result.out == "missing"
   loop_control:
     label: "{{ item.name }}"
-  become: yes
+  become: true
   become_user: "{{ __mailman3_web_user_name }}"
 
 - name: Create Django superusers
-  community.general.django_manage:
+  community.general.django_manage: # noqa no-handler
     command: >-
       shell -c 'import sys;
       from django.contrib.auth.models import User;
       User.objects.create_superuser("{{ item.item.name }}", "{{ item.item.email }}", "{{ item.item.pass }}")'
-    #command: "createsuperuser --noinput --username={{ item.item.name }} --email={{ item.item.email }}"
     settings: settings
     pythonpath: "{{ mailman3_django_project_dir }}"
     project_path: "{{ mailman3_django_project_dir }}"
@@ -57,7 +56,7 @@
   changed_when: true
   loop_control:
     label: "{{ item.item.name }}"
-  become: yes
+  become: true
   become_user: "{{ __mailman3_web_user_name }}"
 
 - name: Check Django sites
@@ -72,11 +71,11 @@
     virtualenv: "{{ mailman3_install_dir }}"
   register: __mailman3_checkexamplesite_result
   changed_when: __mailman3_checkexamplesite_result.out == "exists"
-  become: yes
+  become: true
   become_user: "{{ __mailman3_web_user_name }}"
 
 - name: Correct default Django site
-  community.general.django_manage:
+  community.general.django_manage: # noqa no-handler
     command: >-
       shell -c 'from django.contrib.sites.models import Site;
       Site.objects.filter(domain="example.com").update(
@@ -89,7 +88,7 @@
     virtualenv: "{{ mailman3_install_dir }}"
   when: __mailman3_checkexamplesite_result is changed
   changed_when: true
-  become: yes
+  become: true
   become_user: "{{ __mailman3_web_user_name }}"
 
 # TODO: create additional domains (for right now the admin can do this in the UI)

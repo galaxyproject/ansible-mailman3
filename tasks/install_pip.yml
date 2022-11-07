@@ -83,6 +83,7 @@
   ansible.builtin.template:
     src: "{{ item.src }}.j2"
     dest: /etc/systemd/system/{{ item.dest }}
+    mode: "0644"
   loop:
     - src: mailman3-core.service
       dest: "{{ mailman3_core_service_name }}.service"
@@ -92,20 +93,21 @@
     label: "{{ item.dest }}"
   when: mailman3_process_manager == 'systemd'
   notify:
-    - reload systemd manager configuration
+    - Reload systemd manager configuration
     # TODO: split tasks to only restart the affected service
-    - restart mailman3-core service
-    - restart mailman3-web service
+    - Restart mailman3-core service
+    - Restart mailman3-web service
 
 - name: Install systemd socket unit file
   ansible.builtin.template:
     src: mailman3-web.socket.j2
     dest: "/etc/systemd/system/{{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}.socket"
+    mode: "0644"
   when: mailman3_process_manager == 'systemd'
   notify:
-    - reload systemd manager configuration
-    - restart mailman3-core service
-    - restart mailman3-web service
+    - Reload systemd manager configuration
+    - Restart mailman3-core service
+    - Restart mailman3-web service
 
 # TODO: remove the non-instance service unit file if mailman3_domains is defined, remove the instance service unit file
 
@@ -117,9 +119,8 @@
     owner: root
     group: "{{ __mailman3_web_group_name }}"
     backup: "{{ mailman3_backup_configs }}"
-  #when: mailman3_domains is not defined
   notify:
-    - reload mailman3-web service
+    - Reload mailman3-web service
 
 - name: Create per-domain Django settings files
   ansible.builtin.template:
@@ -135,7 +136,7 @@
     loop_var: mailman3_domain
   when: mailman3_domains is defined
   notify:
-    - reload mailman3-web service
+    - Reload mailman3-web service
 
 - name: Create gunicorn config file
   ansible.builtin.template:
@@ -146,12 +147,12 @@
     backup: "{{ mailman3_backup_configs }}"
   when: mailman3_python_wsgi_package == "gunicorn"
   notify:
-    - restart mailman3-web service
+    - Restart mailman3-web service
 
 # community.general.django_manage hardcodes `<project_dir>/manage.py`, so we make a fake manage.py that calls
 # django-admin
 - name: Create fake manage.py for community.general.django_manage
-  copy:
+  ansible.builtin.copy:
     content: |
       #!/usr/bin/env sh
       exec django-admin "$@"

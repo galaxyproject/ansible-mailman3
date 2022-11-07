@@ -2,11 +2,6 @@
 
 # TODO: test all this on a couple EL versions
 
-# TODO: check for anything else you didn't document here that's only in your group_vars
-
-# Mailman 3 is a complicated service with many parts. It is a good idea to familiarize yourself with them before
-# proceeding. See: https://docs.mailman3.org/en/latest/architecture.html
-
 # A significant number of defaults are set based on conditionals, which is what the `__mailman3_*` variables found in
 # these defaults are used for.  You should generally *not* be setting a `__mailman3_*` variable, there are corresponding
 # non-underscore variables that are intended to be set by role users.
@@ -325,8 +320,25 @@ mailman3_use_pysassc: true
 #   host: inventory_hostname of mx (or "all") for vars to apply to all hosts
 #   mailman3_distribute_maps_dir: remote directory on mx to distribute maps to
 # all keys other than "host" are set as either host vars or in [all:vars] if host = "all"
-#mailman3_distribute_maps: []
-mailman3_distribute_maps_dir: "{{ mailman3_core_var_dir }}/distribute_maps"
+#
+# e.g. if mailman3_distribute_maps_dir is set to '/var/list', then tour Postfix config should contain something like:
+#   relay_recipient_maps = hash:/var/list/postfix_lmtp
+#
+#mailman3_distribute_maps:
+#  - host: all
+#    mailman3_distribute_maps_dir: /var/list
+#    mailman3_postmap_command: /usr/sbin/postmap
+#  - host: mx1.example.org
+#  - host: mx2.example.org
+#    ansible_user: postfix
+#  - host: mx3.example.org
+#    mailman3_distribute_maps_dir: /etc/postfix/mailman_maps
+
+# Where the map distribution playbook is created on the Mailman server
+mailman3_distribute_maps_virtualenv_dir: "{{ mailman3_core_var_dir }}/distribute_maps"
+
+# How often to synchronize maps, in minutes (runs as a cron job as the mailman3_core_user)
+#mailman3_distribute_map_frequency: 5
 
 #
 # Stuff below here you should not need to change

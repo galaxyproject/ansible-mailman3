@@ -30,9 +30,9 @@
 - name: Include Django management tasks
   ansible.builtin.import_tasks: django.yml
 
-#- name: Include Postfix map distribution tasks
-#  ansible.builtin.include_tasks: distribute_maps.yml
-#  when: mailman3_distribute_maps is defined
+- name: Include Postfix map distribution tasks
+  ansible.builtin.include_tasks: distribute_maps.yml
+  when: mailman3_distribute_maps is defined
 
 # Perform whatever restarts are needed now, prevents double restart on first run
 - name: Flush handlers

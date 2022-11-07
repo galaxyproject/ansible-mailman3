@@ -7,7 +7,7 @@
 - name: Collect Mailman Python lib path
   ansible.builtin.find:
     paths: "{{ mailman3_install_dir }}/lib"
-    patterns: "python3.?"
+    patterns: "python3.*"
     file_type: directory
     recurse: false
   register: __mailman3_python_lib_dir

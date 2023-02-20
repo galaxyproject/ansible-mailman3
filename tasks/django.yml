@@ -11,7 +11,7 @@
   become: true
   become_user: "{{ __mailman3_web_user_name }}"
   notify:
-    - reload mailman3-web service
+    - Reload mailman3-web service
 
 - name: Collect Django static files
   community.general.django_manage:

@@ -1,7 +1,5 @@
 ---
 
-# TODO: test all this on a couple EL versions
-
 # A significant number of defaults are set based on conditionals, which is what the `__mailman3_*` variables found in
 # these defaults are used for.  You should generally *not* be setting a `__mailman3_*` variable, there are corresponding
 # non-underscore variables that are intended to be set by role users.

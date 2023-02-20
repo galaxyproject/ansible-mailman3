@@ -1,0 +1,11 @@
+# -*- coding: utf-8 -*-
+# Mailman {{ mailman3_domain }} Domain Web configuration file.
+# /etc/mailman3/settings_{{ mailman3_domain }}.py
+
+from settings import *
+
+
+SITE_ID = {{ ansible_loop.index }}
+# Only display mailing-lists from the same virtual host as the webserver
+FILTER_VHOST = True
+DEFAULT_FROM_EMAIL = '{{ mailman3_default_from_user }}@{{ mailman3_domain }}'

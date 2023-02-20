@@ -1,18 +1,34 @@
 ---
 
-- name: reload systemd manager configuration
-  systemd:
-    daemon_reload: yes
+- name: Reload systemd manager configuration
+  ansible.builtin.systemd:
+    daemon_reload: true
 
-- name: restart mailman3-core service
-  service:
-    name: "{{ mailman3_core_service_name }}"
-    state: restarted
-  when: ansible_virtualization_type != "docker"
+# invoke systemctl directly until someone implements https://github.com/ansible/ansible/issues/61763
 
-- name: restart mailman3-web service
-  service:
-    name: "{{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}{{ item }}"
-    state: restarted
+- name: Restart mailman3-core service
+  ansible.builtin.command: systemctl try-restart {{ mailman3_core_service_name }}.service
+  args:
+    # can't noqa a multi-line yaml string and noqa command-instead-of-module makes the line fail the line length rule
+    warn: false
+  when:
+    - mailman3_process_manager == "systemd"
+    - ansible_virtualization_type != "docker"
+
+- name: Restart mailman3-web service
+  ansible.builtin.command: systemctl try-restart {{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}{{ item }}.service
+  args:
+    warn: false
   loop: "{{ mailman3_domains | default(['']) }}"
-  when: ansible_virtualization_type != "docker"
+  when:
+    - mailman3_process_manager == "systemd"
+    - ansible_virtualization_type != "docker"
+
+- name: Reload mailman3-web service
+  ansible.builtin.command: systemctl try-reload-or-restart {{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}{{ item }}.service
+  args:
+    warn: false
+  loop: "{{ mailman3_domains | default(['']) }}"
+  when:
+    - mailman3_process_manager == "systemd"
+    - ansible_virtualization_type != "docker"

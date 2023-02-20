@@ -5,13 +5,13 @@
   tasks:
     - name: Check postfix_lmtp
       stat:
-        path: "{{ mailman3_var_dir }}/data/postfix_lmtp"
+        path: "{{ mailman3_core_var_dir }}/data/postfix_lmtp"
       register: result
       delegate_to: localhost
       run_once: true
     - name: Copy postfix_lmtp
       copy:
-        src: "{{ mailman3_var_dir }}/data/postfix_lmtp"
+        src: "{{ mailman3_core_var_dir }}/data/postfix_lmtp"
         dest: "{{ mailman3_distribute_maps_dir }}/postfix_lmtp"
       when: result.stat.exists
       notify:

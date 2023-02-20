@@ -3,7 +3,7 @@
 {{ mx.host }}{% for opt in mx | sort %}{% if opt != 'host' %} {{ opt }}={{ mx[opt] }}{% endif %}{% endfor %}
 {% endif %}{% endfor %}
 [all:vars]
-mailman3_var_dir = {{ mailman3_var_dir }}
+mailman3_core_var_dir = {{ mailman3_core_var_dir }}
 {% set all_vars = mailman3_distribute_maps | selectattr("host", "eq", "all") | first -%}
 {% if all_vars is defined -%}
 {% for opt in all_vars | sort %}{% if opt != 'host' -%}

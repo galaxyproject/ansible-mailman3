@@ -1,0 +1,103 @@
+---
+
+# This runs before collectstatic because it creates the log file, which must be created as the web user
+- name: Create/update Django DB schema
+  community.general.django_manage:
+    command: migrate
+    settings: settings
+    pythonpath: "{{ mailman3_django_project_dir }}"
+    project_path: "{{ mailman3_django_project_dir }}"
+    virtualenv: "{{ mailman3_install_dir }}"
+  become: true
+  become_user: "{{ __mailman3_web_user_name }}"
+  notify:
+    - Reload mailman3-web service
+
+- name: Collect Django static files
+  community.general.django_manage:
+    command: collectstatic
+    settings: settings
+    pythonpath: "{{ mailman3_django_project_dir }}"
+    project_path: "{{ mailman3_django_project_dir }}"
+    virtualenv: "{{ mailman3_install_dir }}"
+  when: mailman3_install_method == "pip"
+
+- name: Check Django superusers
+  community.general.django_manage:
+    command: >-
+      shell -c 'import sys;
+      from django.contrib.auth.models import User;
+      sys.stdout.write("exists") if User.objects.filter(username="{{ item.name }}").count() > 0 else sys.stdout.write("missing")'
+    settings: settings
+    pythonpath: "{{ mailman3_django_project_dir }}"
+    project_path: "{{ mailman3_django_project_dir }}"
+    virtualenv: "{{ mailman3_install_dir }}"
+  loop: "{{ mailman3_django_superusers }}"
+  register: __mailman3_checksuperuser_result
+  changed_when: __mailman3_checksuperuser_result.out == "missing"
+  loop_control:
+    label: "{{ item.name }}"
+  become: true
+  become_user: "{{ __mailman3_web_user_name }}"
+
+- name: Create Django superusers
+  community.general.django_manage: # noqa no-handler
+    command: >-
+      shell -c 'import sys;
+      from django.contrib.auth.models import User;
+      User.objects.create_superuser("{{ item.item.name }}", "{{ item.item.email }}", "{{ item.item.pass }}")'
+    settings: settings
+    pythonpath: "{{ mailman3_django_project_dir }}"
+    project_path: "{{ mailman3_django_project_dir }}"
+    virtualenv: "{{ mailman3_install_dir }}"
+  when: item is changed
+  loop: "{{ __mailman3_checksuperuser_result.results }}"
+  register: __mailman3_createsuperuser_result
+  changed_when: true
+  loop_control:
+    label: "{{ item.item.name }}"
+  become: true
+  become_user: "{{ __mailman3_web_user_name }}"
+
+- name: Check Django sites
+  community.general.django_manage:
+    command: >-
+      shell -c 'import sys;
+      from django.contrib.sites.models import Site;
+      sys.stdout.write("exists") if Site.objects.filter(domain="example.com").count() > 0 else sys.stdout.write("missing")'
+    settings: settings
+    pythonpath: "{{ mailman3_django_project_dir }}"
+    project_path: "{{ mailman3_django_project_dir }}"
+    virtualenv: "{{ mailman3_install_dir }}"
+  register: __mailman3_checkexamplesite_result
+  changed_when: __mailman3_checkexamplesite_result.out == "exists"
+  become: true
+  become_user: "{{ __mailman3_web_user_name }}"
+
+- name: Correct default Django site
+  community.general.django_manage: # noqa no-handler
+    command: >-
+      shell -c 'from django.contrib.sites.models import Site;
+      Site.objects.filter(domain="example.com").update(
+      domain="{{ (mailman3_domains | default([])).0 | default(inventory_hostname) }}",
+      name="{{ (mailman3_domains | default([])).0 | default(inventory_hostname) }}"
+      )'
+    settings: settings
+    pythonpath: "{{ mailman3_django_project_dir }}"
+    project_path: "{{ mailman3_django_project_dir }}"
+    virtualenv: "{{ mailman3_install_dir }}"
+  when: __mailman3_checkexamplesite_result is changed
+  changed_when: true
+  become: true
+  become_user: "{{ __mailman3_web_user_name }}"
+
+# TODO: create additional domains (for right now the admin can do this in the UI)
+
+# This is idempotent so it's safe to do as an always-run task
+- name: Compress CSS
+  community.general.django_manage:
+    command: compress
+    settings: settings
+    pythonpath: "{{ mailman3_django_project_dir }}"
+    project_path: "{{ mailman3_django_project_dir }}"
+    virtualenv: "{{ mailman3_install_dir }}"

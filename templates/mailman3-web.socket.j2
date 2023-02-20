@@ -1,0 +1,11 @@
+[Unit]
+Description=Mailman 3 Django web {% if mailman3_domains is defined %}(domain %i) {% endif %}service
+
+[Socket]
+ListenStream={{ mailman3_wsgi_socket }}
+SocketUser=www-data
+# Optionally restrict the socket permissions even more.
+# SocketMode=600
+
+[Install]
+WantedBy=sockets.target

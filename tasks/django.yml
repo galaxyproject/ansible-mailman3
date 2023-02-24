@@ -101,3 +101,21 @@
     pythonpath: "{{ mailman3_django_project_dir }}"
     project_path: "{{ mailman3_django_project_dir }}"
     virtualenv: "{{ mailman3_install_dir }}"
+
+- name: Create cron jobs
+  ansible.builtin.cron:
+    name: "{{ item.name | default(item.special_time) }}"
+    cron_file: ansible_mailman3_web
+    user: "{{ __mailman3_web_user_name }}"
+    minute: "{{ item.minute | default(omit) }}"
+    special_time: "{{ item.special_time | default(omit) }}"
+    job: "MAILMAN_WEB_CONFIG={{ mailman3_django_project_dir }}/settings.py {{ mailman3_install_dir }}/bin/mailman-web runjobs {{ item.name | default(item.special_time) }}"
+  loop:
+    - special_time: hourly
+    - special_time: daily
+    - special_time: weekly
+    - special_time: monthly
+    - special_time: yearly
+    - name: minutely
+    - name: quarter_hourly
+      minute: 2,17,32,47

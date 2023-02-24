@@ -32,3 +32,13 @@
   when: mailman3_django_urls_module_name
   notify:
     - Reload mailman3-web service
+
+- name: Install custom middleware
+  ansible.builtin.copy:
+    src: "middleware.py"
+    mode: "0644"
+    dest: "{{ mailman3_django_project_dir }}/{{ mailman3_django_middleware_module_name }}.py"
+    backup: "{{ mailman3_backup_configs }}"
+  when: mailman3_wsgi_socket.startswith("/")
+  notify:
+    - Reload mailman3-web service

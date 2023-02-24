@@ -202,3 +202,8 @@ COMPRESS_OFFLINE = {{ __mailman3_django_config_merged.compress_offline | bool | 
 
 HYPERKITTY_ATTACHMENT_FOLDER = '{{ __mailman3_django_config_merged.hyperkitty_attachment_folder }}'
 {% endif %}
+{% if mailman3_wsgi_socket.startswith("/") %}
+
+# Add custom middleware to set REMOTE_ADDR when using a unix domain socket
+MIDDLEWARE = MIDDLEWARE + ('{{ mailman3_django_middleware_module_name }}.SetRemoteAddrFromForwardedFor',)
+{% endif %}

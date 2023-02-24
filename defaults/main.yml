@@ -279,6 +279,12 @@ mailman3_wsgi_command: >-
 # mailman3_domains is set, this should contain a '%i' for the systemd service instance.
 mailman3_wsgi_socket: "/run/mailman3-web{{ mailman3_domains is defined | ternary('@%i', '') }}.sock"
 
+# Custom middleware derived from the removed django.middleware.http.SetRemoteAddrFromForwardedFor is needed to set
+# REMOTE_ADDR from X-Forwarded-For when using a UNIX domain socket rather than TCP for mailman3_wsgi_socket, since
+# Postorius/HyperKitty use REMOTE_ADDR rather than the other headers. See
+# https://docs.djangoproject.com/en/4.1/releases/1.1/#removed-setremoteaddrfromforwardedfor-middleware
+mailman3_django_middleware_module_name: "ansible_galaxyproject_mailman3_middleware"
+
 # Django superusers. Set at least one or you will be unable to manage your Mailman server from the web UI. The password
 # here is the initial password, once created it can be changed from within Django and will not be changed back by the
 # role.

@@ -268,9 +268,13 @@ __mailman3_django_config_default:
 # documentation and Debian packages use uWSGI, which is no longer developed.
 mailman3_python_wsgi_package: gunicorn
 
+# gunicorn response timeout
+mailman3_web_timeout: 300
+
 # Command executed by systemd to run the WSGI server.
 mailman3_wsgi_command: >-
   {{ mailman3_install_dir }}/bin/gunicorn
+  --timeout {{ mailman3_web_timeout }}
   --pythonpath {{ mailman3_django_project_dir }}
   --config {{ mailman3_core_etc_dir }}/gunicorn_config.py
   'mailman_web.wsgi:application'

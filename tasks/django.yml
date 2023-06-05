@@ -41,7 +41,7 @@
   become_user: "{{ __mailman3_web_user_name }}"
 
 - name: Create Django superusers
-  community.general.django_manage: # noqa no-handler
+  community.general.django_manage:  # noqa no-handler
     command: >-
       shell -c 'import sys;
       from django.contrib.auth.models import User;
@@ -75,7 +75,7 @@
   become_user: "{{ __mailman3_web_user_name }}"
 
 - name: Correct default Django site
-  community.general.django_manage: # noqa no-handler
+  community.general.django_manage:  # noqa no-handler
     command: >-
       shell -c 'from django.contrib.sites.models import Site;
       Site.objects.filter(domain="example.com").update(

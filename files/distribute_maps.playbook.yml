@@ -3,19 +3,21 @@
 - name: Distribute Mailman transport maps to backup MX servers
   hosts: all
   tasks:
-    - name: Check postfix_lmtp
-      stat:
+    - name: Check postfix_lmtp  # noqa run-once
+      ansible.builtin.stat:
         path: "{{ mailman3_core_var_dir }}/data/postfix_lmtp"
       register: result
       delegate_to: localhost
       run_once: true
     - name: Copy postfix_lmtp
-      copy:
+      ansible.builtin.copy:
         src: "{{ mailman3_core_var_dir }}/data/postfix_lmtp"
         dest: "{{ mailman3_distribute_maps_dir }}/postfix_lmtp"
+        mode: '0644'
       when: result.stat.exists
       notify:
-        - postmap
+        - Postmap
   handlers:
-    - name: postmap
-      command: "{{ mailman3_postmap_command | default('postmap') }} {{ mailman3_distribute_maps_dir | quote }}/postfix_lmtp"
+    - name: Postmap
+      changed_when: false
+      ansible.builtin.command: "{{ mailman3_postmap_command | default('postmap') }} {{ mailman3_distribute_maps_dir | quote }}/postfix_lmtp"

@@ -304,8 +304,8 @@ mailman3_default_from_user: postorius
 # Override upstream (Mailman) Django paths - set 'mailman3_postorius_root' to an empty string to serve Mailman from the
 # root of your web server. Setting either option overrides the value of ROOT_URLCONF in the Django settings to use a
 # copy of url.py templated from the role instead of the one installed with Mailman.
-# mailman3_postorius_root: 'postorius/'
-# mailman3_hyperkitty_root: 'hyperkitty/'
+# mailman3_postorius_root: 'mailman3/'
+# mailman3_hyperkitty_root: 'archives/'
 mailman3_django_urls_module_name: >-
   {{
     (mailman3_postorius_root is defined or mailman3_hyperkitty_root is defined) | ternary(

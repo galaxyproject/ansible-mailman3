@@ -4,6 +4,7 @@
   template:
     src: mailman.cfg.j2
     dest: "{{ mailman3_etc_dir }}/mailman.cfg"
+    owner: "{{ __mailman3_user_name }}"
     group: "{{ __mailman3_group_name }}"
     mode: "0640"
     backup: "{{ mailman3_backup_configs }}"
@@ -17,8 +18,9 @@
     src: "hyperkitty.cfg.j2"
     dest: "{{ mailman3_etc_dir }}/hyperkitty.cfg"
     mode: "0644"
-    owner: "{{ __mailman3_user_name }}"
-    group: "{{ __mailman3_group_name }}"
+    owner: "{{ mailman3_web_user }}"
+    group: "{{ mailman3_web_group }}"
+    backup: "{{ mailman3_backup_configs }}"
   when: mailman3_run_postorius and mailman3_run_hyperkitty
   notify:
     - restart mailman3-web service
@@ -28,8 +30,8 @@
   template:
     src: "{{ item.name }}.j2"
     mode: "{{ item.mode }}"
-    owner: "{{ __mailman3_user_name }}"
-    group: "{{ __mailman3_group_name }}"
+    owner: "{{ mailman3_web_user }}"
+    group: "{{ mailman3_web_group }}"
     dest: "{{ mailman3_django_project_dir }}/{{ item.name }}"
     backup: "{{ mailman3_backup_configs }}"
   with_items:
@@ -61,8 +63,8 @@
   template:
     src: "settings_local.py.j2"
     dest: "{{ mailman3_django_settings_file }}"
-    owner: "{{ __mailman3_user_name }}"
-    group: "{{ __mailman3_group_name }}"
+    owner: "{{ mailman3_web_user }}"
+    group: "{{ mailman3_web_group }}"
     mode: "0640"
     backup: "{{ mailman3_backup_configs }}"
   when: mailman3_run_postorius

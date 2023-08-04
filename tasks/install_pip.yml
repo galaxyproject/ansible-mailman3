@@ -37,7 +37,7 @@
     mode: "{{ item.mode | default(omit) }}"
     state: directory
   with_items:
-    - { path: "{{ mailman3_etc_dir }}",                                        group: "{{ __mailman3_group_name }}",  mode: "0750" }
+    - { path: "{{ mailman3_etc_dir }}",  owner: "{{ __mailman3_user_name }}",  group: "{{ __mailman3_group_name }}",  mode: "0750" }
     - { path: "{{ mailman3_var_dir }}",  owner: "{{ __mailman3_user_name }}",  group: "{{ __mailman3_group_name }}",  mode: "0750" }
     - { path: "{{ mailman3_log_dir }}",  owner: "{{ __mailman3_user_name }}",  group: "{{ __mailman3_group_name }}",  mode: "0750" }
   when: mailman3_process_manager == 'systemd' and mailman3_run_m3core

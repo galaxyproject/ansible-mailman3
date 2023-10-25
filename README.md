@@ -14,7 +14,7 @@ footer parts, and takes care of list membership issues. However it
 does require a properly set up Mail Transfer Agent (MTA) such as exim,
 qmail, postfix or similar to both accept and deliver email.
 
-This role is capable of working with several MTAs, but has been developed 
+This role is capable of working with several MTAs, but has been developed
 alongside exim4 and as such may have glitches with other options.
 
 
@@ -25,6 +25,23 @@ The role does not include configuration of the MTA (exim, postfix, etc)
 which must be done to get email in and out of Mailman Core. Mailman 3
 (normally) uses LMTP to send/receive mail, and canned condfigurations are
 available in many places.
+
+The author's configuration uses Exim4 and MariaDB, with some help from
+nginx purely as reverse proxy. The following roles may be of interest:
+
+- [rivimey.ansible-mailman3](https://github.com/rivimey/ansible-mailman3)
+- [rivimey.ansible\_dovecot](https://galaxy.ansible.com/rivimey/ansible_dovecot)
+- [rivimey.ansible\_exim4](https://galaxy.ansible.com/rivimey/ansible_exim4)
+- [galaxyproject.postgresql](https://galaxy.ansible.com/galaxyproject/postgresql)
+- [galaxyproject.postgresql_objects](https://galaxy.ansible.com/galaxyproject/postgresql_objects)
+- [galaxyproject.postfix](https://galaxy.ansible.com/galaxyproject/postfix)
+- [galaxyproject.opendkim](https://galaxy.ansible.com/galaxyproject/opendkim)
+- [galaxyproject.nginx](https://galaxy.ansible.com/galaxyproject/nginx)
+
+It should be remembered that the MTA (Exim, postfix, etc) and mailman-core
+must both know which mailing lists are configured. In Exim's case, this can
+be done by exim checking which directories exist in the mailman install;
+other MTAs have other ways to do this.
 
 
 Role Variables
@@ -94,7 +111,7 @@ the current host, which is addressed externally as mailman.example.org.
 your ansible vault, and so it is commented out in this yaml set**.
 
 ```
-# These control which components of mailman are configured on which host. 
+# These control which components of mailman are configured on which host.
 
 # Define which parts of mailman run on this host, and which hosts are involved.
 mailman3_run_m3core: yes
@@ -137,7 +154,7 @@ mailman3_django_log_dir: "{{ mailman3_install_dir }}/var/web/log"
 mailman3_django_settings_file: "{{ mailman3_install_dir }}/etc/django-settings.py"
 
 # As part of a pathname:
-mailman3_python_version: python3.8
+mailman3_python_version: python3.10
 
 # Basic setup:
 mailman3_web_user: "www-data"
@@ -206,4 +223,5 @@ Author Information
 ------------------
 
 Created by Nate Coraor @natefoo
-Maintained by Ruth Ivimey-Cook @rivimey
+Developed and Maintained by Ruth Ivimey-Cook @rivimey
+

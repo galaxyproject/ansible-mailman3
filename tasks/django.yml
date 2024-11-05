@@ -109,7 +109,7 @@
     user: "{{ __mailman3_web_user_name }}"
     minute: "{{ item.minute | default(omit) }}"
     special_time: "{{ item.special_time | default(omit) }}"
-    job: "MAILMAN_WEB_CONFIG={{ mailman3_django_project_dir }}/settings.py {{ mailman3_install_dir }}/bin/mailman-web runjobs {{ item.name | default(item.special_time) }}"
+    job: "MAILMAN_WEB_CONFIG={{ mailman3_django_project_dir }}/settings.py {{ mailman3_install_dir }}/bin/mailman-web runjobs {{ item.name | default(item.special_time) }}"  # noqa: yaml[line-length]
   loop:
     - special_time: hourly
     - special_time: daily

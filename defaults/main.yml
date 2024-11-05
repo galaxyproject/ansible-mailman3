@@ -201,6 +201,20 @@ __mailman3_config_default:
     verp_personalized_deliveries: "yes"
     verp_delivery_interval: "1"
 
+# Mailman3 Core log rotation configuration
+mailman3_logrotate_config:
+  - weekly
+  - rotate 4
+  - compress
+  - maxsize 100M
+  - missingok
+  - notifempty
+  - sharedscripts
+  - delaycompress
+  - postrotate:
+      - su - {{ __mailman3_core_user_name }} -s /bin/sh -c "{{ mailman3_install_dir }}/bin/mailman -C {{ mailman3_core_etc_dir }}/mailman.cfg reopen"
+  # endscript is automatically appended
+
 #
 # Mailman Web Interface configuration
 #

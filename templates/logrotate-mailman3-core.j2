@@ -1,0 +1,17 @@
+##
+## This file is maintained by Ansible - CHANGES WILL BE OVERWRITTEN
+##
+{{ mailman3_core_log_dir }}/*.log {
+{% for opt in mailman3_logrotate_config %}
+{% if opt is mapping %}
+{% set key, val = opt.items() | first %}
+    {{ key }}
+{% for subopt in val %}
+        {{ subopt }}
+{% endfor %}
+    endscript
+{% else %}
+    {{ opt }}
+{% endif %}
+{% endfor %}
+}

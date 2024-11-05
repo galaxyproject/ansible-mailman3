@@ -8,27 +8,26 @@
 
 - name: Restart mailman3-core service
   ansible.builtin.command: systemctl try-restart {{ mailman3_core_service_name }}.service
-  args:
-    # can't noqa a multi-line yaml string and noqa command-instead-of-module makes the line fail the line length rule
-    warn: false
   when:
     - mailman3_process_manager == "systemd"
     - ansible_virtualization_type != "docker"
+  tags:
+    - skip_ansible_lint
 
 - name: Restart mailman3-web service
   ansible.builtin.command: systemctl try-restart {{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}{{ item }}.service
-  args:
-    warn: false
   loop: "{{ mailman3_domains | default(['']) }}"
   when:
     - mailman3_process_manager == "systemd"
     - ansible_virtualization_type != "docker"
+  tags:
+    - skip_ansible_lint
 
 - name: Reload mailman3-web service
   ansible.builtin.command: systemctl try-reload-or-restart {{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}{{ item }}.service
-  args:
-    warn: false
   loop: "{{ mailman3_domains | default(['']) }}"
   when:
     - mailman3_process_manager == "systemd"
     - ansible_virtualization_type != "docker"
+  tags:
+    - skip_ansible_lint

@@ -109,6 +109,12 @@
     - Restart mailman3-core service
     - Restart mailman3-web service
 
+- name: Install Mailman Core logrotate configuration
+  ansible.builtin.template:
+    src: logrotate-mailman3-core.j2
+    dest: /etc/logrotate.d/mailman3-core
+    mode: "0644"
+
 # TODO: remove the non-instance service unit file if mailman3_domains is defined, remove the instance service unit file
 
 - name: Create Django settings file

@@ -42,3 +42,17 @@
   when: mailman3_wsgi_socket.startswith("/")
   notify:
     - Reload mailman3-web service
+
+- name: Install digest cron task
+  ansible.builtin.cron:
+    name: "mailman digests"
+    special_time: daily
+    job: "{{ mailman3_install_dir }}/bin/mailman digests --periodic"
+    user: "{{ __mailman3_core_user_name }}"
+
+- name: Install notify cron task
+  ansible.builtin.cron:
+    name: "mailman notify"
+    special_time: daily
+    job: "{{ mailman3_install_dir }}/bin/mailman notify"
+    user: "{{ __mailman3_core_user_name }}"
